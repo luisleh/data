@@ -1,0 +1,207 @@
+//@version=6
+indicator("Alien Long Weather v2.3 Compact + Phase Navigator (Giro de Fondo)", overlay=true, max_labels_count=500, max_lines_count=500)
+
+// ============================================================================
+// v2.3 — CAMBIOS RESPECTO A v2.2
+//
+// 1. FIX REPINTADO: el request.security de v2.2 usaba lookahead_on con el
+//    close actual del HTF -> las barras históricas veían el futuro y el
+//    gráfico quedaba "muy lindo" hacia atrás pero imposible de operar en
+//    vivo. Ahora se usa el último close HTF CONFIRMADO (close[1] con
+//    lookahead_on), que es el patrón estándar anti-repintado.
+//
+// 2. PHASE NAVIGATOR: seno y coseno acá son el estocástico re-dibujado
+//    (positionInBox * 2pi), o sea coincidentes: giran EN la misma barra que
+//    el precio, nunca antes. Para "saber cuál rombo es el último" no sirve
+//    mirar la ola: hay que medir AGOTAMIENTO del fondo. El Navigator suma
+//    seis condiciones que suelen aparecer antes del giro y las convierte en
+//    un score 0-100:
+//      - El piso de la caja deja de hacer mínimos nuevos (vendedores
+//        agotados)                                              -> 30 pts
+//      - Divergencia alcista precio/RSI en los pivotes de mínimo -> 25 pts
+//      - La posición dentro de la caja viene subiendo             -> 15 pts
+//      - La Recovery Line gira hacia arriba                       -> 12 pts
+//      - HTF ya no cae                                            -> 10 pts
+//      - El rango de la caja se comprime                          ->  8 pts
+//
+//    Lectura:
+//      "ÚLTIMOS ROMBOS?" (amarillo)  score >= aviso, precio todavía en la
+//          mitad baja de la caja: los rombos verdes que veas desde acá
+//          tienen alta probabilidad de ser los finales. Zona de acumulación
+//          escalonada, no de entrada completa.
+//      "ROMBO FINAL?" (naranja)      un rebote (rombo) que ocurre CON el
+//          aviso activo: candidato concreto a último rombo.
+//      "GIRO ✓" (verde)              la posición en la caja cruza la mitad
+//          hacia arriba con score alto y precio sobre la Recovery Line:
+//          giro confirmado, la línea amarilla (coseno) empieza su subida
+//          desde abajo.
+// ============================================================================
+
+// ==================== INPUTS ====================
+len = input.int(34, "Ventana Local", minval=10)
+macroLen = input.int(180, "Ventana Macro", minval=80)
+mesoLen = input.int(60, "Ventana Meso", minval=30)
+trendLen = input.int(34, "Current Line", minval=10)
+recoveryLen = input.int(13, "Recovery Line", minval=5)
+
+usePhaseFilter = input.bool(true, "Usar Filtro Seno/Coseno")
+waveLen = input.int(34, "Longitud Ola Fase", minval=10, maxval=200)
+
+useHTF = input.bool(true, "Usar HTF Confirmación")
+htf = input.timeframe("240", "HTF Timeframe")
+
+showBox = input.bool(true, "Mostrar Caja")
+showLines = input.bool(true, "Mostrar Líneas")
+showPhase = input.bool(true, "Mostrar Seno y Coseno")
+
+grpNav = "Phase Navigator (giro de fondo)"
+showNav = input.bool(true, "Mostrar Navigator", group=grpNav)
+floorHoldBars = input.int(8, "Barras con piso sin caer", minval=3, group=grpNav, tooltip="Cuántas barras seguidas debe aguantar el piso de la caja sin hacer un mínimo nuevo para considerar agotada la venta")
+divLeft = input.int(5, "Pivote: barras izquierda", minval=2, group=grpNav)
+divRight = input.int(3, "Pivote: barras derecha", minval=1, group=grpNav, tooltip="Un pivote de mínimo se confirma recién estas barras después: menos barras = más rápido pero más ruido")
+divMemory = input.int(21, "Memoria divergencia (barras)", minval=5, group=grpNav)
+warnScore = input.int(55, "Score de aviso (últimos rombos)", minval=30, maxval=90, group=grpNav)
+confirmScore = input.int(60, "Score de confirmación (giro)", minval=30, maxval=95, group=grpNav)
+
+// ==================== HELPERS ====================
+norm01(x) => math.max(0, math.min(1, x))
+
+// ==================== CÁLCULOS BASE ====================
+boxHigh = ta.highest(high, len)
+boxLow = ta.lowest(low, len)
+boxRange = math.max(boxHigh - boxLow, syminfo.mintick)
+positionInBox = (close - boxLow) / boxRange
+
+atr = ta.atr(14)
+currentLine = ta.ema(close, trendLen)
+recoveryLine = ta.ema(close, recoveryLen)
+
+// ==================== WAVE PHASE ====================
+angle = positionInBox * 2 * math.pi
+waveSin = math.sin(angle)
+waveCos = math.cos(angle)
+
+strongPhase = waveSin > 0.42 and waveCos > 0.15
+goodPhase   = waveSin > 0.18 and waveCos > -0.08
+
+phaseBoost = strongPhase ? 1.22 : goodPhase ? 1.09 : 0.78
+
+// ==================== TREND POWER ====================
+macroPos = (close - ta.lowest(low, macroLen)) / math.max(ta.highest(high, macroLen) - ta.lowest(low, macroLen), syminfo.mintick)
+mesoSlope = ta.linreg(close, mesoLen, 0) - ta.linreg(close, mesoLen, 1)
+
+// Anti-repintado: solo se usan closes HTF ya confirmados
+htfCloseConf = request.security(syminfo.tickerid, htf, close[1], lookahead=barmerge.lookahead_on)
+htfPrevConf  = request.security(syminfo.tickerid, htf, close[2], lookahead=barmerge.lookahead_on)
+htfDrift = (htfCloseConf - htfPrevConf) / math.max(atr, syminfo.mintick)
+htfUp = useHTF ? htfDrift > 0 : true
+
+trendPower = math.max(0, math.min(100,
+     28 * norm01(macroPos) +
+     22 * (mesoSlope > 0 ? 1 : 0) +
+     18 * (close > currentLine ? 1 : 0) +
+     15 * (close > recoveryLine ? 1 : 0) +
+     12 * (waveSin > 0 ? 1 : 0) +
+     phaseBoost * 5))
+
+// ==================== SEÑALES ====================
+baseCondition = close > recoveryLine and recoveryLine >= recoveryLine[1] and trendPower >= 55
+phaseOk = not usePhaseFilter or goodPhase
+
+enterLong     = baseCondition and phaseOk and close > currentLine and low > currentLine - atr * 1.15 and trendPower >= 62 and (strongPhase or htfUp)
+reefBounce    = low <= currentLine + atr * 0.35 and close > currentLine and strongPhase and trendPower > 50
+strongImpulse = enterLong and waveSin > 0.58 and waveCos > 0.28 and trendPower > 75
+
+exitSignal = close < recoveryLine - atr * 0.5 and trendPower < 35
+stopSignal = close < currentLine - atr * 1.9
+
+// ==================== PHASE NAVIGATOR: SCORE DE AGOTAMIENTO ====================
+// 1) El piso de la caja deja de hacer mínimos nuevos
+floorDropped = boxLow < boxLow[1]
+barsFloorStable = nz(ta.barssince(floorDropped), 10000)
+floorExhausted = barsFloorStable >= floorHoldBars
+
+// 2) Divergencia alcista: el precio hace un mínimo más bajo pero el RSI hace
+//    un mínimo más alto (la caída pierde fuerza aunque el precio siga bajando)
+mom = ta.rsi(close, 14)
+pl = ta.pivotlow(low, divLeft, divRight)
+var float lastPLow = na
+var float lastPLowMom = na
+var float prevPLow = na
+var float prevPLowMom = na
+bool bullDivNow = false
+if not na(pl)
+    prevPLow := lastPLow
+    prevPLowMom := lastPLowMom
+    lastPLow := pl
+    lastPLowMom := mom[divRight]
+    bullDivNow := not na(prevPLow) and lastPLow < prevPLow and lastPLowMom > prevPLowMom
+divRecent = nz(ta.barssince(bullDivNow), 10000) <= divMemory
+
+// 3) La posición dentro de la caja viene subiendo (suavizada)
+posSm = ta.ema(positionInBox, 5)
+posRising = posSm > posSm[1] and posSm[1] > posSm[2]
+
+// 4) La Recovery Line gira hacia arriba
+recTurn = recoveryLine > recoveryLine[1]
+
+// 5) HTF ya no cae
+htfNotDown = useHTF ? htfDrift >= 0 : true
+
+// 6) Compresión: el rango de la caja se achica (la venta se agota)
+rangeShrinking = boxRange < boxRange[5]
+
+bottomScore = (floorExhausted ? 30 : 0) + (divRecent ? 25 : 0) + (posRising ? 15 : 0) + (recTurn ? 12 : 0) + (htfNotDown ? 10 : 0) + (rangeShrinking ? 8 : 0)
+
+// Señales del Navigator
+inLowerHalf = positionInBox < 0.55
+giroWarning = showNav and floorExhausted and bottomScore >= warnScore and inLowerHalf
+warnStart = giroWarning and not giroWarning[1]
+
+midCrossUp = ta.crossover(posSm, 0.5)
+giroConfirm = showNav and midCrossUp and bottomScore[1] >= confirmScore and close > recoveryLine
+
+lastDiamondCandidate = showNav and reefBounce and giroWarning
+
+// ==================== VISUALES ====================
+plot(showBox ? boxHigh : na, "Techo Caja", color.new(color.gray, 70))
+plot(showBox ? boxLow  : na, "Piso Caja",  color.new(color.gray, 70))
+
+plot(showLines ? currentLine : na,  "Current Line",  color.new(color.aqua, 0), 2)
+plot(showLines ? recoveryLine : na, "Recovery Line", color.new(color.blue, 20), 1)
+
+plot(showPhase ? waveSin * 85 : na, "Seno Fase", color.new(color.fuchsia, 0), 2)
+plot(showPhase ? waveCos * 85 : na, "Coseno",    color.new(color.orange, 0), 2)
+
+plotshape(series=enterLong,     title="ENTRAR",  style=shape.labelup,      location=location.belowbar, color=color.teal,    text="ENTRAR",  size=size.normal)
+plotshape(series=reefBounce,    title="REBOTE",  style=shape.diamond,      location=location.belowbar, color=color.lime,    text="REBOTE",  size=size.large)
+plotshape(series=strongImpulse, title="IMPULSO", style=shape.labelup,      location=location.belowbar, color=color.aqua,    text="IMPULSO", size=size.large)
+
+plotshape(series=exitSignal,    title="SALIR",   style=shape.xcross,       location=location.abovebar, color=color.red,     text="SALIR",   size=size.small)
+plotshape(series=stopSignal,    title="STOP",    style=shape.triangledown, location=location.abovebar, color=color.fuchsia, text="STOP",    size=size.normal)
+
+// Navigator: rombo que ocurre con el aviso activo = candidato a último rombo
+plotshape(series=lastDiamondCandidate, title="ROMBO FINAL?", style=shape.diamond, location=location.belowbar, color=color.orange, text="FINAL?", size=size.large)
+
+if warnStart
+    label.new(bar_index, boxLow - atr, text="ÚLTIMOS ROMBOS?\nScore " + str.tostring(bottomScore, "#"), style=label.style_label_up, color=color.new(color.yellow, 15), textcolor=color.black, size=size.small)
+if giroConfirm
+    label.new(bar_index, low - atr * 1.5, text="GIRO ✓\nScore " + str.tostring(bottomScore, "#"), style=label.style_label_up, color=color.new(color.green, 0), textcolor=color.white, size=size.normal)
+
+// Fondo
+bgcolor(strongImpulse ? color.new(color.aqua, 88) : enterLong ? color.new(color.green, 90) : na)
+bgcolor(giroConfirm ? color.new(color.green, 82) : giroWarning ? color.new(color.yellow, 92) : na, title="Fondo Navigator")
+
+// ==================== ALERTAS ====================
+alertcondition(enterLong,     "ENTRAR LONG",  "Alien v2.3: Señal de ENTRADA fuerte")
+alertcondition(reefBounce,    "REBOTE",       "Alien v2.3: Rebote con fase")
+alertcondition(strongImpulse, "IMPULSO",      "Alien v2.3: Impulso fuerte")
+alertcondition(exitSignal or stopSignal, "SALIDA", "Alien v2.3: Señal de salida")
+alertcondition(warnStart,     "ÚLTIMOS ROMBOS", "Alien v2.3: Fondo agotándose, los próximos rombos pueden ser los últimos")
+alertcondition(giroConfirm,   "GIRO CONFIRMADO", "Alien v2.3: Giro de fondo confirmado, coseno arrancando desde abajo")
+
+// Data Window
+plot(trendPower, "Trend Power %", display=display.data_window)
+plot(waveSin * 100, "Wave Sin", display=display.data_window)
+plot(bottomScore, "Bottom Score %", display=display.data_window)
+plot(barsFloorStable, "Barras piso estable", display=display.data_window)
