@@ -1,4 +1,70 @@
-# Alien Long Weather v2.3 + Phase Navigator
+# Alien Wave Composer v3.0 — Descomposición Fourier real
+
+**Archivo: `alien-wave-composer-v3.pine`** (el indicador nuevo, reconstruido desde cero)
+
+## La teoría que pedías, aplicada de verdad
+
+La intuición "toda onda se compone de más ondas, describibles con senos y
+cosenos" es exactamente la **Transformada Discreta de Fourier (DFT)**: cualquier
+serie de N barras se puede escribir *exactamente* como
+
+```
+precio(t) = tendencia lineal + Σ [ aₖ·cos(2πkt/N) + bₖ·sin(2πkt/N) ]
+```
+
+v2.2 no hacía esto: solo tomaba la posición del precio en la caja y le aplicaba
+un seno y un coseno de una sola vuelta — el precio disfrazado, sin capacidad de
+anticipar. v3.0 hace la descomposición real:
+
+1. **Detrend**: quita la tendencia lineal de las últimas N barras (default 128).
+2. **DFT**: mide la energía (amplitud) de cada frecuencia posible en el residuo.
+3. **Selección**: se queda con las K ondas de mayor energía (default 5) y
+   descarta el resto como ruido (y todo período menor a `minPer`).
+4. **Reconstrucción**: dibuja la suma de esas K ondas sobre el pasado (curva
+   celeste) para que veas qué tan bien describe lo que ya pasó.
+5. **Extrapolación**: prolonga la suma de ondas hacia adelante (curva amarilla
+   punteada) y marca el primer valle y la primera cresta proyectados:
+   **"GIRO ↑ en ~N barras"** y **"GIRO ↓ en ~N barras"**.
+
+## Cómo leerlo
+
+- **Curva celeste (pasado)**: el modelo de K ondas ajustado. Si no sigue bien
+  al precio, las ondas de este activo/timeframe son débiles — no confíes en la
+  proyección ahí.
+- **Curva amarilla punteada (futuro)**: la extrapolación de las ondas actuales,
+  amortiguada barra a barra (input `Amortiguación`) porque la confianza decae
+  con el horizonte.
+- **Etiquetas GIRO ↑ / GIRO ↓**: cuántas barras faltan para el próximo valle o
+  cresta *si las ondas actuales persisten*. Esta es la respuesta directa a
+  "¿cuál es el último rombo?": cuando el GIRO ↑ proyectado está a pocas barras,
+  los rebotes que veas son candidatos a ser los últimos.
+- **Triángulos VALLE / CRESTA (histórico)**: en cada barra del pasado, marcados
+  cuando la suma de ondas giró usando **solo datos disponibles hasta esa
+  barra** (sin repintado). Sirven para backtestear visualmente si el método
+  funciona en tu activo antes de creerle a la proyección.
+- **Tabla (arriba a la derecha)**: las K ondas dominantes con su período,
+  amplitud y % de energía. La primera fila (amarilla) es el ciclo dominante.
+- **Data Window**: período dominante, valor del compuesto y dirección
+  proyectada (+1/-1).
+
+## Límite honesto
+
+Descomponer es matemática exacta; **extrapolar supone que las ondas medidas
+persisten** (cuasi-estacionariedad). En mercados eso se cumple por tramos: los
+ciclos derivan, cambian de período y mueren. Por eso el modelo se re-estima en
+cada barra, la proyección se amortigua, y las etiquetas de giro son un
+escenario probable — no una certeza. Reglas prácticas:
+
+- Operá la proyección solo cuando la curva celeste venía siguiendo bien al
+  precio en las últimas décadas de barras.
+- Preferí giros proyectados del ciclo dominante (período largo, mucha
+  % energía) sobre giros de ondas cortas.
+- Combiná con el Trend Power / Recovery Line de v2.x como confirmación.
+- Backtesteá con los triángulos VALLE/CRESTA históricos antes de usar capital.
+
+---
+
+# Alien Long Weather v2.3 + Phase Navigator (versión anterior)
 
 Indicador Pine Script v6 para TradingView. Evolución de "Alien Long Weather v2.2":
 mismo dibujo (caja, líneas, seno/coseno, rombos), más un **Phase Navigator** que

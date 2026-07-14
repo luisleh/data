@@ -1,0 +1,231 @@
+//@version=6
+indicator("Alien Wave Composer v3.0 — Descomposición Fourier real", overlay=true, max_lines_count=500, max_labels_count=200, max_polylines_count=100)
+
+// ============================================================================
+// IDEA CENTRAL (lo que v2.2 no hacía)
+//
+// Cualquier serie de precios sobre una ventana de N barras se puede escribir
+// EXACTAMENTE como:
+//
+//     precio(t) = tendencia lineal + Σ_k [ a_k·cos(2πkt/N) + b_k·sin(2πkt/N) ]
+//
+// Eso es la Transformada Discreta de Fourier (DFT): "todas las ondas se
+// componen de más ondas, descriptas con senos y cosenos". Este script:
+//
+//   1. Toma las últimas N barras y les quita la tendencia lineal.
+//   2. Calcula la DFT del residuo: mide cuánta energía (amplitud) tiene cada
+//      frecuencia posible.
+//   3. Se queda con las K ondas de mayor energía (las dominantes) y descarta
+//      el resto como ruido.
+//   4. Reconstruye la suma de esas K ondas sobre el pasado (curva celeste,
+//      para que veas qué tan bien el modelo describe lo que ya pasó) y la
+//      EXTRAPOLA hacia el futuro (curva amarilla punteada).
+//   5. Marca sobre la proyección el primer valle ("GIRO ↑ en ~N barras") y la
+//      primera cresta ("GIRO ↓ en ~N barras"): eso es la anticipación que
+//      buscás — el modelo te dice cuántas barras faltan para el giro si las
+//      ondas actuales persisten.
+//   6. En cada barra histórica marca VALLE/CRESTA cuando la suma de ondas
+//      dominantes gira (para que puedas verificar hacia atrás si el método
+//      hubiera funcionado en tu activo — sin repintado: cada barra usa solo
+//      su propio pasado).
+//
+// LÍMITE HONESTO: la matemática de descomponer es exacta; la extrapolación
+// supone que las ondas medidas persisten unas barras más (cuasi-
+// estacionariedad). En mercados eso se cumple a veces y por poco tiempo: por
+// eso la proyección se re-estima en cada barra y se amortigua hacia el
+// futuro. Usala como escenario probable, no como certeza.
+// ============================================================================
+
+// ==================== INPUTS ====================
+srcIn    = input.source(close, "Fuente")
+winN     = input.int(128, "Ventana de análisis N (barras)", minval=32, maxval=400)
+topK     = input.int(5, "Ondas dominantes a sumar (K)", minval=1, maxval=12)
+minPer   = input.int(10, "Período mínimo de onda (barras)", minval=4, tooltip="Ondas más cortas que esto se descartan como ruido")
+projBars = input.int(34, "Barras a proyectar", minval=5, maxval=150)
+extendTrend = input.bool(false, "Extrapolar también la tendencia lineal", tooltip="Apagado: la proyección extrapola solo las ondas alrededor del último nivel de tendencia (mejor para ver giros). Encendido: además prolonga la pendiente de la ventana")
+dampen   = input.float(0.97, "Amortiguación por barra futura", minval=0.80, maxval=1.0, step=0.01, tooltip="La confianza de una proyección Fourier decae con el horizonte: <1 achica las ondas proyectadas a medida que se alejan")
+showFit  = input.bool(true, "Mostrar ajuste sobre el pasado")
+showProj = input.bool(true, "Mostrar proyección futura")
+showTbl  = input.bool(true, "Mostrar tabla de ondas dominantes")
+showSig  = input.bool(true, "Mostrar VALLE/CRESTA históricos")
+
+// ==================== BUFFER DE PRECIOS ====================
+var xs = array.new_float()
+array.push(xs, srcIn)
+if array.size(xs) > winN
+    array.shift(xs)
+canCalc = array.size(xs) >= winN
+
+// ==================== SUMA DE ONDAS SELECCIONADAS ====================
+// Evalúa Σ_k [a_k·cos(2πkt/N) + b_k·sin(2πkt/N)] en el instante t.
+// Para t más allá del final de la ventana aplica la amortiguación.
+f_wave(ks, as_, bs_, n, t, damp) =>
+    float y = 0.0
+    if array.size(ks) > 0
+        for j = 0 to array.size(ks) - 1
+            k = array.get(ks, j)
+            w = 2.0 * math.pi * k / n
+            y += array.get(as_, j) * math.cos(w * t) + array.get(bs_, j) * math.sin(w * t)
+    fut = t - (n - 1)
+    fut > 0 ? y * math.pow(damp, fut) : y
+
+// ==================== DFT SOBRE LA VENTANA ====================
+n = winN
+kMax = math.max(1, math.min(math.floor(1.0 * n / minPer), 24))
+
+float m = na           // pendiente de la tendencia lineal
+float c = na           // intercepto
+selK = array.new_int()     // índices k de las ondas dominantes
+selA = array.new_float()   // coeficientes coseno
+selB = array.new_float()   // coeficientes seno
+float totalPower = 0.0
+
+if canCalc
+    // --- Tendencia lineal por mínimos cuadrados ---
+    float sy = 0.0
+    for i = 0 to n - 1
+        sy += array.get(xs, i)
+    meanT = (n - 1) / 2.0
+    meanY = sy / n
+    float sxy = 0.0
+    float sxx = 0.0
+    for i = 0 to n - 1
+        dt = i - meanT
+        sxy += dt * (array.get(xs, i) - meanY)
+        sxx += dt * dt
+    m := sxy / sxx
+    c := meanY - m * meanT
+
+    // --- DFT del residuo: a_k, b_k y energía por frecuencia ---
+    ka = array.new_float()
+    kb = array.new_float()
+    kp = array.new_float()
+    for k = 1 to kMax
+        float ak = 0.0
+        float bk = 0.0
+        w = 2.0 * math.pi * k / n
+        for i = 0 to n - 1
+            r = array.get(xs, i) - (c + m * i)
+            ak += r * math.cos(w * i)
+            bk += r * math.sin(w * i)
+        ak := 2.0 * ak / n
+        bk := 2.0 * bk / n
+        array.push(ka, ak)
+        array.push(kb, bk)
+        pwr = ak * ak + bk * bk
+        array.push(kp, pwr)
+        totalPower += pwr
+
+    // --- Selección de las K ondas con más energía ---
+    used = array.new_bool(kMax, false)
+    for s = 1 to math.min(topK, kMax)
+        bestIdx = -1
+        float bestP = -1.0
+        for j = 0 to kMax - 1
+            if not array.get(used, j) and array.get(kp, j) > bestP
+                bestP := array.get(kp, j)
+                bestIdx := j
+        if bestIdx >= 0
+            array.set(used, bestIdx, true)
+            array.push(selK, bestIdx + 1)
+            array.push(selA, array.get(ka, bestIdx))
+            array.push(selB, array.get(kb, bestIdx))
+
+// ==================== ESTADO ACTUAL DEL COMPUESTO ====================
+wPrev = canCalc ? f_wave(selK, selA, selB, n, n - 2, dampen) : na
+wNow  = canCalc ? f_wave(selK, selA, selB, n, n - 1, dampen) : na
+wNext = canCalc ? f_wave(selK, selA, selB, n, n + 0, dampen) : na
+d0 = wNow - wPrev
+d1 = wNext - wNow
+
+// La suma de ondas dominantes toca fondo / techo AHORA según el modelo
+valle  = canCalc and d0 <= 0 and d1 > 0
+cresta = canCalc and d0 >= 0 and d1 < 0
+
+modelNow = canCalc ? c + m * (n - 1) + wNow : na
+dominantPeriod = canCalc and array.size(selK) > 0 ? 1.0 * n / array.get(selK, 0) : na
+
+// ==================== VISUALES HISTÓRICOS ====================
+plot(modelNow, "Modelo (tendencia + K ondas)", color.new(color.aqua, 25), 1)
+
+plotshape(showSig and valle,  title="VALLE",  style=shape.triangleup,   location=location.belowbar, color=color.lime, text="VALLE",  size=size.tiny)
+plotshape(showSig and cresta, title="CRESTA", style=shape.triangledown, location=location.abovebar, color=color.red,  text="CRESTA", size=size.tiny)
+
+// ==================== AJUSTE PASADO + PROYECCIÓN FUTURA ====================
+var polyline plFit = na
+var polyline plProj = na
+var label lbUp = na
+var label lbDown = na
+
+if barstate.islast and canCalc
+    polyline.delete(plFit)
+    polyline.delete(plProj)
+    label.delete(lbUp)
+    label.delete(lbDown)
+
+    if showFit
+        pts = array.new<chart.point>()
+        for t = 0 to n - 1
+            y = c + m * t + f_wave(selK, selA, selB, n, t, dampen)
+            array.push(pts, chart.point.from_index(bar_index - (n - 1) + t, y))
+        plFit := polyline.new(pts, line_color = color.new(color.aqua, 55), line_width = 1)
+
+    if showProj
+        ptsP = array.new<chart.point>()
+        yArr = array.new_float()
+        baseTrend = c + m * (n - 1)
+        for t = 0 to projBars
+            tt = n - 1 + t
+            trendV = extendTrend ? c + m * tt : baseTrend
+            y = trendV + f_wave(selK, selA, selB, n, tt, dampen)
+            array.push(yArr, y)
+            array.push(ptsP, chart.point.from_index(bar_index + t, y))
+        plProj := polyline.new(ptsP, line_color = color.new(color.yellow, 0), line_width = 2, line_style = line.style_dashed)
+
+        // Primer valle y primera cresta de la curva proyectada
+        int tMin = -1
+        int tMax = -1
+        for t = 1 to projBars - 1
+            y0 = array.get(yArr, t - 1)
+            y1 = array.get(yArr, t)
+            y2 = array.get(yArr, t + 1)
+            if tMin < 0 and y1 < y0 and y1 <= y2
+                tMin := t
+            if tMax < 0 and y1 > y0 and y1 >= y2
+                tMax := t
+        if tMin > 0
+            lbUp := label.new(bar_index + tMin, array.get(yArr, tMin), "GIRO ↑\nen ~" + str.tostring(tMin) + " barras", style=label.style_label_up, color=color.new(color.green, 10), textcolor=color.white, size=size.small)
+        if tMax > 0
+            lbDown := label.new(bar_index + tMax, array.get(yArr, tMax), "GIRO ↓\nen ~" + str.tostring(tMax) + " barras", style=label.style_label_down, color=color.new(color.red, 10), textcolor=color.white, size=size.small)
+
+// ==================== TABLA DE ONDAS DOMINANTES ====================
+var table tbl = table.new(position.top_right, 4, 14, bgcolor=color.new(color.black, 35), border_width=1, border_color=color.new(color.gray, 60))
+if barstate.islast and canCalc and showTbl
+    table.clear(tbl, 0, 0, 3, 13)
+    hdrBg = color.new(color.blue, 40)
+    table.cell(tbl, 0, 0, "Onda",      text_color=color.white, text_size=size.tiny, bgcolor=hdrBg)
+    table.cell(tbl, 1, 0, "Período",   text_color=color.white, text_size=size.tiny, bgcolor=hdrBg)
+    table.cell(tbl, 2, 0, "Amplitud",  text_color=color.white, text_size=size.tiny, bgcolor=hdrBg)
+    table.cell(tbl, 3, 0, "% energía", text_color=color.white, text_size=size.tiny, bgcolor=hdrBg)
+    if array.size(selK) > 0
+        for j = 0 to array.size(selK) - 1
+            k = array.get(selK, j)
+            a = array.get(selA, j)
+            b = array.get(selB, j)
+            per = 1.0 * n / k
+            amp = math.sqrt(a * a + b * b)
+            pct = totalPower > 0 ? 100.0 * (a * a + b * b) / totalPower : 0.0
+            rowCol = j == 0 ? color.yellow : color.white
+            table.cell(tbl, 0, j + 1, "#" + str.tostring(j + 1),          text_color=rowCol, text_size=size.tiny)
+            table.cell(tbl, 1, j + 1, str.tostring(per, "#.#") + " b",    text_color=rowCol, text_size=size.tiny)
+            table.cell(tbl, 2, j + 1, str.tostring(amp, "#.####"),        text_color=rowCol, text_size=size.tiny)
+            table.cell(tbl, 3, j + 1, str.tostring(pct, "#.#") + "%",     text_color=rowCol, text_size=size.tiny)
+
+// ==================== ALERTAS ====================
+alertcondition(valle,  "VALLE DE ONDAS",  "Wave Composer: la suma de ondas dominantes tocó fondo — giro hacia arriba según el modelo")
+alertcondition(cresta, "CRESTA DE ONDAS", "Wave Composer: la suma de ondas dominantes tocó techo — giro hacia abajo según el modelo")
+
+// ==================== DATA WINDOW ====================
+plot(dominantPeriod, "Período dominante (barras)", display=display.data_window)
+plot(wNow, "Suma de ondas (sin tendencia)", display=display.data_window)
+plot(canCalc ? (d1 > 0 ? 1 : -1) : na, "Dirección proyectada (+1/-1)", display=display.data_window)
