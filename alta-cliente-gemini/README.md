@@ -70,14 +70,21 @@ Mandate (o pedile a alguien que te mande) un correo con asunto que contenga
 deberías recibir el email de feedback. Para no esperar, ejecutá `probarAhora`
 desde el editor.
 
+Si un correo quedó etiquetado como `alta-cliente/error` (p. ej. por un problema
+de configuración ya corregido), ejecutá `reprocesarErrores` desde el editor:
+quita la etiqueta de error y vuelve a analizarlo en el momento.
+
 ## Personalización
 
 - **Las reglas**: editá `REGLAS_ALTA` y `DOCUMENTOS_REQUERIDOS` en `Reglas.gs`.
   Están en lenguaje natural — agregá, quitá o ajustá requisitos según tu
   jurisdicción y procedimiento.
 - **El asunto que dispara el análisis**: `CONFIG.GMAIL_QUERY` en `Code.gs`.
-- **El modelo**: `CONFIG.GEMINI_MODEL` (`gemini-2.5-flash` por defecto;
-  `gemini-2.5-pro` si querés más precisión en documentos complejos).
+- **El modelo**: `CONFIG.GEMINI_MODELS` es una lista en orden de preferencia
+  (`gemini-3.6-flash` por defecto). Si Google retira un modelo (devuelve 404),
+  el script prueba automáticamente el siguiente de la lista y lo deja anotado
+  en el log. Si querés más precisión en documentos complejos, poné primero un
+  modelo Pro vigente.
 - **La frecuencia**: `CONFIG.TRIGGER_MINUTOS` (volvé a ejecutar `configurarInicial`
   después de cambiarla).
 

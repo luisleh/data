@@ -27,9 +27,10 @@ var CONFIG = {
   LABEL_PROCESADO: 'alta-cliente/procesado',
   LABEL_ERROR: 'alta-cliente/error',
 
-  // Modelo de Gemini. gemini-2.5-flash es rápido y económico y lee PDFs
-  // (incluye OCR de escaneos). Para casos difíciles: gemini-2.5-pro.
-  GEMINI_MODEL: 'gemini-2.5-flash',
+  // Modelos de Gemini, en orden de preferencia. Si la API devuelve 404
+  // (modelo retirado, como pasó con gemini-2.5-flash), se prueba el siguiente
+  // de la lista automáticamente y se avisa en el log.
+  GEMINI_MODELS: ['gemini-3.6-flash', 'gemini-3.5-flash-lite', 'gemini-flash-latest'],
 
   // Límite de tamaño por PDF (la API acepta hasta ~20 MB por request inline)
   MAX_PDF_MB: 15,
@@ -191,21 +192,40 @@ function analizarConGemini(apiKey, pdfs, asunto, remitente, cuerpoEmail) {
     }
   };
 
-  var url = 'https://generativelanguage.googleapis.com/v1beta/models/' +
-    CONFIG.GEMINI_MODEL + ':generateContent';
+  // Probar los modelos en orden: si uno fue retirado (HTTP 404), pasar al
+  // siguiente de la lista en lugar de fallar.
+  var respuesta = null;
+  var modeloUsado = null;
+  var ultimoError = null;
+  for (var i = 0; i < CONFIG.GEMINI_MODELS.length; i++) {
+    var modelo = CONFIG.GEMINI_MODELS[i];
+    var url = 'https://generativelanguage.googleapis.com/v1beta/models/' +
+      modelo + ':generateContent';
+    var r = UrlFetchApp.fetch(url, {
+      method: 'post',
+      contentType: 'application/json',
+      headers: { 'x-goog-api-key': apiKey },
+      payload: JSON.stringify(payload),
+      muteHttpExceptions: true
+    });
+    var codigo = r.getResponseCode();
+    if (codigo === 200) {
+      respuesta = r;
+      modeloUsado = modelo;
+      if (i > 0) {
+        Logger.log('AVISO: el modelo preferido no está disponible; se usó ' + modelo +
+          '. Conviene actualizar CONFIG.GEMINI_MODELS.');
+      }
+      break;
+    }
+    ultimoError = 'HTTP ' + codigo + ' con ' + modelo + ': ' +
+      r.getContentText().substring(0, 400);
+    if (codigo !== 404) break; // otros errores (clave inválida, cuota, etc.) no se reintentan
+    Logger.log('Modelo no disponible (' + modelo + '), probando el siguiente…');
+  }
 
-  var respuesta = UrlFetchApp.fetch(url, {
-    method: 'post',
-    contentType: 'application/json',
-    headers: { 'x-goog-api-key': apiKey },
-    payload: JSON.stringify(payload),
-    muteHttpExceptions: true
-  });
-
-  var codigo = respuesta.getResponseCode();
-  if (codigo !== 200) {
-    throw new Error('La API de Gemini devolvió HTTP ' + codigo + ': ' +
-      respuesta.getContentText().substring(0, 500));
+  if (!respuesta) {
+    throw new Error('La API de Gemini falló con todos los modelos configurados. Último error: ' + ultimoError);
   }
 
   var datos = JSON.parse(respuesta.getContentText());
@@ -215,7 +235,9 @@ function analizarConGemini(apiKey, pdfs, asunto, remitente, cuerpoEmail) {
       JSON.stringify(datos).substring(0, 500));
   }
 
-  return JSON.parse(candidato.content.parts[0].text);
+  var analisis = JSON.parse(candidato.content.parts[0].text);
+  analisis._modelo_usado = modeloUsado;
+  return analisis;
 }
 
 /**
@@ -264,7 +286,8 @@ function enviarFeedback(destino, asunto, remitente, pdfs, a) {
     (listaObs ? '<h3>Observaciones</h3><ul>' + listaObs + '</ul>' : '') +
     '<hr style="border:none;border-top:1px solid #ddd;margin-top:20px;">' +
     '<p style="color:#888;font-size:12px;">Análisis automático generado con Gemini (' +
-    CONFIG.GEMINI_MODEL + '). Verificar antes de habilitar el envío de medios de contraste.</p>' +
+    escaparHtml(a._modelo_usado || CONFIG.GEMINI_MODELS[0]) +
+    '). Verificar antes de habilitar el envío de medios de contraste.</p>' +
     '</div>';
 
   GmailApp.sendEmail(destino, '[ALTA CLIENTE] ' + a.resultado + ' — ' +
@@ -287,5 +310,18 @@ function escaparHtml(texto) {
  * ejecutar esta función desde el editor con un correo de prueba ya enviado.
  */
 function probarAhora() {
+  procesarAltasClientes();
+}
+
+/**
+ * Reintenta los correos que quedaron etiquetados como alta-cliente/error
+ * (p. ej. tras corregir la configuración o actualizar el modelo):
+ * les quita la etiqueta de error y los procesa de nuevo en el momento.
+ */
+function reprocesarErrores() {
+  var labelError = obtenerOCrearEtiqueta(CONFIG.LABEL_ERROR);
+  var hilos = labelError.getThreads(0, 20);
+  hilos.forEach(function (hilo) { hilo.removeLabel(labelError); });
+  Logger.log('Se quitó la etiqueta de error a ' + hilos.length + ' hilo(s). Reprocesando…');
   procesarAltasClientes();
 }
