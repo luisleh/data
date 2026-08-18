@@ -14,6 +14,11 @@ Automatización en **Google Apps Script** que corre dentro de tu propia cuenta d
 4. Etiqueta el hilo como `alta-cliente/procesado` para no procesarlo dos veces
    (o `alta-cliente/error` si algo falló, avisando también por email).
 
+Los errores transitorios de la API (saturación 503, cuota 429, error interno 500)
+no marcan el correo como error: el script lo deja pendiente y lo reintenta solo
+en las próximas corridas del trigger. Recién si sigue fallando después de
+~1 hora de reintentos lo etiqueta como error y avisa por email.
+
 ## Archivos
 
 | Archivo | Qué es |

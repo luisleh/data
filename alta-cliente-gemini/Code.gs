@@ -36,7 +36,12 @@ var CONFIG = {
   MAX_PDF_MB: 15,
 
   // Cada cuántos minutos corre el trigger que crea configurarInicial()
-  TRIGGER_MINUTOS: 10
+  TRIGGER_MINUTOS: 10,
+
+  // Ante errores transitorios de la API (503 saturación, 429 cuota, 500),
+  // el hilo se deja sin etiquetar para que el próximo trigger lo reintente.
+  // Tras este número de corridas fallidas se marca como error y se avisa.
+  MAX_REINTENTOS_TRANSITORIOS: 6
 };
 
 /**
@@ -91,17 +96,39 @@ function procesarAltasClientes() {
   if (!hilos.length) return;
 
   hilos.forEach(function (hilo) {
+    var claveReintentos = 'reintentos_' + hilo.getId();
     try {
       procesarHilo(hilo, apiKey, emailFeedback);
       hilo.addLabel(labelProcesado);
+      props.deleteProperty(claveReintentos);
     } catch (e) {
       Logger.log('Error procesando "' + hilo.getFirstMessageSubject() + '": ' + e);
+
+      // Errores transitorios (API saturada, cuota): no etiquetar el hilo,
+      // así el próximo trigger lo vuelve a intentar solo. Recién después de
+      // MAX_REINTENTOS_TRANSITORIOS corridas fallidas se marca como error.
+      if (e && e.esTransitorio) {
+        var intentos = Number(props.getProperty(claveReintentos) || 0) + 1;
+        if (intentos < CONFIG.MAX_REINTENTOS_TRANSITORIOS) {
+          props.setProperty(claveReintentos, String(intentos));
+          Logger.log('Error transitorio (intento ' + intentos + '/' +
+            CONFIG.MAX_REINTENTOS_TRANSITORIOS + '). Se reintentará en la próxima corrida.');
+          return;
+        }
+        props.deleteProperty(claveReintentos);
+      }
+
       hilo.addLabel(labelError);
       GmailApp.sendEmail(
         emailFeedback,
         '[ALTA CLIENTE] ERROR de procesamiento: ' + hilo.getFirstMessageSubject(),
         'No se pudo analizar automáticamente este correo.\n\n' +
         'Motivo: ' + e + '\n\n' +
+        ((e && e.esTransitorio)
+          ? 'Se reintentó ' + CONFIG.MAX_REINTENTOS_TRANSITORIOS + ' veces a lo largo de ~' +
+            (CONFIG.MAX_REINTENTOS_TRANSITORIOS * CONFIG.TRIGGER_MINUTOS) + ' minutos sin éxito. ' +
+            'Cuando el servicio se normalice, ejecutá reprocesarErrores desde el editor.\n\n'
+          : '') +
         'Revisalo manualmente. El hilo quedó etiquetado como ' + CONFIG.LABEL_ERROR + '.'
       );
     }
@@ -192,40 +219,70 @@ function analizarConGemini(apiKey, pdfs, asunto, remitente, cuerpoEmail) {
     }
   };
 
-  // Probar los modelos en orden: si uno fue retirado (HTTP 404), pasar al
-  // siguiente de la lista en lugar de fallar.
+  // Probar los modelos en orden:
+  //   404 (modelo retirado)            → pasar al siguiente de la lista.
+  //   503/500/429 (saturación o cuota) → reintentar una vez tras una pausa y,
+  //                                      si persiste, probar el siguiente modelo.
+  //   Otros (p. ej. 400/401/403)       → error de configuración: cortar ya.
   var respuesta = null;
   var modeloUsado = null;
   var ultimoError = null;
-  for (var i = 0; i < CONFIG.GEMINI_MODELS.length; i++) {
+  var huboTransitorio = false;
+
+  for (var i = 0; i < CONFIG.GEMINI_MODELS.length && !respuesta; i++) {
     var modelo = CONFIG.GEMINI_MODELS[i];
     var url = 'https://generativelanguage.googleapis.com/v1beta/models/' +
       modelo + ':generateContent';
-    var r = UrlFetchApp.fetch(url, {
-      method: 'post',
-      contentType: 'application/json',
-      headers: { 'x-goog-api-key': apiKey },
-      payload: JSON.stringify(payload),
-      muteHttpExceptions: true
-    });
-    var codigo = r.getResponseCode();
-    if (codigo === 200) {
-      respuesta = r;
-      modeloUsado = modelo;
-      if (i > 0) {
-        Logger.log('AVISO: el modelo preferido no está disponible; se usó ' + modelo +
-          '. Conviene actualizar CONFIG.GEMINI_MODELS.');
+
+    for (var intento = 0; intento < 2; intento++) {
+      var r = UrlFetchApp.fetch(url, {
+        method: 'post',
+        contentType: 'application/json',
+        headers: { 'x-goog-api-key': apiKey },
+        payload: JSON.stringify(payload),
+        muteHttpExceptions: true
+      });
+      var codigo = r.getResponseCode();
+
+      if (codigo === 200) {
+        respuesta = r;
+        modeloUsado = modelo;
+        if (i > 0) {
+          Logger.log('AVISO: el modelo preferido no está disponible; se usó ' + modelo +
+            '. Conviene actualizar CONFIG.GEMINI_MODELS.');
+        }
+        break;
       }
-      break;
+
+      ultimoError = 'HTTP ' + codigo + ' con ' + modelo + ': ' +
+        r.getContentText().substring(0, 400);
+
+      var esTransitorio = (codigo === 503 || codigo === 500 || codigo === 429);
+      if (esTransitorio) {
+        huboTransitorio = true;
+        if (intento === 0) {
+          Logger.log('API saturada (' + codigo + ' con ' + modelo + '), reintentando en 20 s…');
+          Utilities.sleep(20000);
+          continue; // segundo intento con el mismo modelo
+        }
+        Logger.log('Sigue saturada, probando el siguiente modelo…');
+        break; // pasar al siguiente modelo
+      }
+
+      if (codigo === 404) {
+        Logger.log('Modelo no disponible (' + modelo + '), probando el siguiente…');
+        break; // pasar al siguiente modelo
+      }
+
+      // Error de configuración (clave inválida, request mal formado, etc.)
+      throw new Error('La API de Gemini devolvió un error no recuperable. ' + ultimoError);
     }
-    ultimoError = 'HTTP ' + codigo + ' con ' + modelo + ': ' +
-      r.getContentText().substring(0, 400);
-    if (codigo !== 404) break; // otros errores (clave inválida, cuota, etc.) no se reintentan
-    Logger.log('Modelo no disponible (' + modelo + '), probando el siguiente…');
   }
 
   if (!respuesta) {
-    throw new Error('La API de Gemini falló con todos los modelos configurados. Último error: ' + ultimoError);
+    var error = new Error('La API de Gemini falló con todos los modelos configurados. Último error: ' + ultimoError);
+    error.esTransitorio = huboTransitorio;
+    throw error;
   }
 
   var datos = JSON.parse(respuesta.getContentText());
