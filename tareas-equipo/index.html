@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tareas del Equipo</title>
+<style>
+  :root {
+    --bg: #f4f5f7;
+    --card: #ffffff;
+    --ink: #1f2430;
+    --muted: #6b7280;
+    --line: #e5e7eb;
+    --accent: #2563eb;
+    --accent-soft: #eff6ff;
+    --green: #16a34a;
+    --green-bg: #dcfce7;
+    --yellow: #b45309;
+    --yellow-bg: #fef3c7;
+    --red: #dc2626;
+    --red-bg: #fee2e2;
+    --overdue: #7f1d1d;
+    --overdue-bg: #fecaca;
+    --star: #f59e0b;
+    --radius: 12px;
+    --shadow: 0 1px 3px rgba(16,24,40,.08), 0 1px 2px rgba(16,24,40,.05);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    padding-block: 0 48px;
+    padding-inline: 16px;
+  }
+  .wrap { max-width: 860px; margin: 0 auto; }
+
+  header {
+    display: flex; align-items: center; justify-content: space-between;
+    flex-wrap: wrap; gap: 12px;
+    padding-block: 20px 4px;
+  }
+  header h1 { font-size: 22px; margin: 0; display: flex; align-items: center; gap: 10px; }
+  header h1 .logo { font-size: 24px; }
+  .header-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+
+  .btn {
+    border: 1px solid var(--line); background: var(--card); color: var(--ink);
+    padding: 8px 14px; border-radius: 8px; font-size: 14px; cursor: pointer;
+    box-shadow: var(--shadow); transition: background .15s;
+    font-family: inherit;
+  }
+  .btn:hover { background: #f9fafb; }
+  .btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .btn-primary:hover { background: #1d4ed8; }
+  .btn-danger { color: var(--red); }
+  .btn-small { padding: 4px 10px; font-size: 13px; box-shadow: none; }
+
+  .status-bar {
+    font-size: 13px; color: var(--muted);
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    margin-block: 4px 16px;
+  }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); display: inline-block; }
+  .dot.off { background: #9ca3af; }
+
+  .banner {
+    border-radius: var(--radius); padding: 14px 16px; margin-block: 10px;
+    font-size: 14px; line-height: 1.5;
+  }
+  .banner-warn { background: var(--yellow-bg); color: var(--yellow); border: 1px solid #fcd34d; }
+  .banner-info { background: var(--accent-soft); color: #1e40af; border: 1px solid #bfdbfe; }
+
+  /* Pantalla de bienvenida */
+  .welcome {
+    background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow);
+    padding: 40px 32px; text-align: center; margin-block: 40px;
+  }
+  .welcome .logo { font-size: 48px; }
+  .welcome h2 { margin: 12px 0 8px; }
+  .welcome p { color: var(--muted); max-width: 440px; margin: 8px auto 20px; line-height: 1.6; }
+
+  /* Tarjetas de tarea */
+  .task-list { display: flex; flex-direction: column; gap: 10px; }
+  .task {
+    background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow);
+    border-left: 5px solid var(--green);
+    padding: 14px 16px;
+  }
+  .task.sem-amarillo { border-left-color: #f59e0b; }
+  .task.sem-rojo { border-left-color: var(--red); }
+  .task.sem-vencida { border-left-color: var(--overdue); }
+  .task.sem-sinfecha { border-left-color: #cbd5e1; }
+  .task.completada { opacity: .6; border-left-color: #cbd5e1; }
+  .task.completada .task-name { text-decoration: line-through; }
+
+  .task-top { display: flex; align-items: flex-start; gap: 10px; }
+  .task-main { flex: 1; min-width: 0; }
+  .task-name { font-weight: 600; font-size: 16px; margin: 0; overflow-wrap: anywhere; }
+  .task-next { font-size: 14px; color: var(--muted); margin: 4px 0 0; overflow-wrap: anywhere; }
+  .task-next b { color: var(--ink); font-weight: 500; }
+
+  .task-meta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; align-items: center; }
+  .chip {
+    font-size: 12.5px; padding: 3px 10px; border-radius: 999px;
+    background: #f3f4f6; color: var(--muted); white-space: nowrap;
+  }
+  .chip-fecha.sem-verde   { background: var(--green-bg);  color: var(--green);  font-weight: 600; }
+  .chip-fecha.sem-amarillo{ background: var(--yellow-bg); color: var(--yellow); font-weight: 600; }
+  .chip-fecha.sem-rojo    { background: var(--red-bg);    color: var(--red);    font-weight: 700; }
+  .chip-fecha.sem-vencida { background: var(--overdue-bg);color: var(--overdue);font-weight: 700; }
+  .chip-sub { cursor: pointer; user-select: none; background: var(--accent-soft); color: var(--accent); }
+  .chip-sub:hover { background: #dbeafe; }
+  .chip-editor { font-size: 11.5px; }
+
+  .star-btn {
+    background: none; border: none; font-size: 22px; cursor: pointer;
+    color: #d1d5db; padding: 0 2px; line-height: 1;
+  }
+  .star-btn.on { color: var(--star); }
+  .star-btn:hover { transform: scale(1.15); }
+
+  .done-check { width: 19px; height: 19px; margin-top: 2px; cursor: pointer; accent-color: var(--green); }
+
+  .task-actions { display: flex; gap: 4px; }
+  .icon-btn {
+    background: none; border: none; cursor: pointer; font-size: 15px;
+    color: #9ca3af; padding: 4px; border-radius: 6px;
+  }
+  .icon-btn:hover { background: #f3f4f6; color: var(--ink); }
+
+  /* Subtareas */
+  .subtasks { margin-top: 12px; border-top: 1px dashed var(--line); padding-top: 10px; display: none; }
+  .subtasks.open { display: block; }
+  .subtask-row { display: flex; align-items: center; gap: 8px; padding: 4px 0; font-size: 14px; }
+  .subtask-row input { width: 16px; height: 16px; accent-color: var(--accent); cursor: pointer; }
+  .subtask-row.done label { text-decoration: line-through; color: var(--muted); }
+  .subtask-row label { cursor: pointer; overflow-wrap: anywhere; }
+  .subtask-hint { font-size: 12px; color: var(--muted); margin: 2px 0 6px; }
+
+  .section-title {
+    font-size: 13px; text-transform: uppercase; letter-spacing: .06em;
+    color: var(--muted); margin: 26px 0 10px; font-weight: 600;
+  }
+  .empty { text-align: center; color: var(--muted); padding: 40px 0; font-size: 15px; }
+
+  /* Modal */
+  .modal-bg {
+    position: fixed; inset: 0; background: rgba(15,23,42,.45);
+    display: none; align-items: flex-start; justify-content: center;
+    padding: 4vh 16px; overflow-y: auto; z-index: 50;
+  }
+  .modal-bg.open { display: flex; }
+  .modal {
+    background: var(--card); border-radius: 14px; width: 100%; max-width: 560px;
+    padding: 22px 24px; box-shadow: 0 20px 50px rgba(0,0,0,.25);
+  }
+  .modal h2 { margin: 0 0 16px; font-size: 18px; }
+  .field { margin-bottom: 14px; }
+  .field label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 5px; }
+  .field input[type=text], .field input[type=date], .field textarea {
+    width: 100%; padding: 9px 11px; border: 1px solid var(--line); border-radius: 8px;
+    font-size: 14px; font-family: inherit; background: #fff; color: var(--ink);
+  }
+  .field input:focus, .field textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .field-row { display: flex; gap: 12px; flex-wrap: wrap; }
+  .field-row .field { flex: 1; min-width: 160px; }
+  .check-field { display: flex; align-items: center; gap: 8px; font-size: 14px; margin-bottom: 14px; }
+  .check-field input { width: 17px; height: 17px; accent-color: var(--star); }
+
+  .sub-edit-row { display: flex; gap: 8px; align-items: center; margin-bottom: 6px; }
+  .sub-edit-row input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); }
+  .sub-edit-row input[type=text] { flex: 1; padding: 7px 10px; border: 1px solid var(--line); border-radius: 8px; font-size: 14px; font-family: inherit; }
+  .sub-edit-row .rm { background: none; border: none; color: #9ca3af; cursor: pointer; font-size: 16px; }
+  .sub-edit-row .rm:hover { color: var(--red); }
+
+  .modal-actions { display: flex; justify-content: space-between; gap: 8px; margin-top: 20px; }
+  .modal-actions .right { display: flex; gap: 8px; margin-left: auto; }
+
+  footer { text-align: center; color: #9ca3af; font-size: 12px; margin-top: 40px; }
+
+  @media (max-width: 480px) {
+    .task-top { flex-wrap: wrap; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1><span class="logo">📋</span> Tareas del Equipo</h1>
+    <div class="header-actions" id="headerActions" hidden>
+      <span class="status-bar" id="statusBar"><span class="dot" id="syncDot"></span><span id="statusText"></span></span>
+      <button class="btn" id="btnRefresh" title="Volver a leer los archivos de la carpeta">⟳ Actualizar</button>
+      <button class="btn btn-primary" id="btnNew">+ Nueva tarea</button>
+    </div>
+  </header>
+
+  <div id="conflictBanner" class="banner banner-warn" hidden></div>
+
+  <!-- Pantalla inicial: elegir carpeta -->
+  <div class="welcome" id="welcome">
+    <div class="logo">📂</div>
+    <h2 id="welcomeTitle">Conectar la carpeta de tareas</h2>
+    <p id="welcomeMsg">Elige la carpeta de Dropbox donde está este archivo (o cualquier carpeta compartida).
+       Las tareas se guardan ahí como archivos individuales, así varias personas pueden trabajar a la vez sin pisarse.</p>
+    <button class="btn btn-primary" id="btnPick" style="font-size:15px; padding:10px 22px;">Elegir carpeta…</button>
+    <p id="browserWarn" style="color:var(--red); font-weight:600;" hidden>
+      Este navegador no permite acceder a carpetas. Usa <b>Google Chrome</b> o <b>Microsoft Edge</b> en computadora.
+    </p>
+  </div>
+
+  <div id="app" hidden>
+    <div class="section-title" id="pendTitle">Pendientes</div>
+    <div class="task-list" id="pendingList"></div>
+    <div class="empty" id="emptyMsg" hidden>No hay tareas pendientes. 🎉</div>
+
+    <div id="doneSection" hidden>
+      <div class="section-title" style="cursor:pointer" id="doneToggle">▸ Completadas (<span id="doneCount">0</span>)</div>
+      <div class="task-list" id="doneList" hidden></div>
+    </div>
+  </div>
+
+  <footer>Los datos viven como archivos .json en la subcarpeta <b>tareas/</b> — sincronizados por Dropbox.</footer>
+</div>
+
+<!-- Modal crear/editar -->
+<div class="modal-bg" id="modalBg">
+  <div class="modal">
+    <h2 id="modalTitle">Nueva tarea</h2>
+    <div class="field">
+      <label>Nombre de la tarea *</label>
+      <input type="text" id="fNombre" placeholder="Ej.: Contrato Pérez">
+    </div>
+    <div class="field">
+      <label>Próximo paso a ejecutar</label>
+      <input type="text" id="fPaso" placeholder="Ej.: Enviar borrador al cliente">
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>Tiempo estimado</label>
+        <input type="text" id="fTiempo" placeholder="Ej.: 2 horas">
+      </div>
+      <div class="field">
+        <label>Fecha límite</label>
+        <input type="date" id="fFecha">
+      </div>
+    </div>
+    <div class="check-field">
+      <input type="checkbox" id="fPrioridad"><label for="fPrioridad">⭐ Marcar como prioritaria</label>
+    </div>
+    <div class="field">
+      <label>Subtareas previas (deben completarse antes)</label>
+      <div id="subEditList"></div>
+      <button class="btn btn-small" id="btnAddSub" type="button">+ Agregar subtarea</button>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-danger" id="btnDelete" hidden type="button">Eliminar</button>
+      <div class="right">
+        <button class="btn" id="btnCancel" type="button">Cancelar</button>
+        <button class="btn btn-primary" id="btnSave" type="button">Guardar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+/* ============================================================
+   Tareas del Equipo — app de un solo archivo para Dropbox.
+   Cada tarea = un archivo JSON en la subcarpeta "tareas/".
+   Editar tareas distintas nunca toca el mismo archivo, por lo
+   que dos personas pueden usar el sistema a la vez sin
+   generar copias en conflicto de Dropbox.
+   ============================================================ */
+
+const SUBFOLDER = "tareas";
+const AUTO_REFRESH_MS = 30000;
+
+let rootHandle = null;    // carpeta elegida
+let tasksHandle = null;   // subcarpeta tareas/
+let tasks = [];           // [{data, fileName, loadedStamp}]
+let openSubtasks = new Set();  // nombres de archivo con subtareas expandidas
+let editingFile = null;   // fileName en edición, o null si es nueva
+let refreshTimer = null;
+
+const $ = id => document.getElementById(id);
+
+/* ---------- Nombre del usuario (para "editado por") ---------- */
+function userName() {
+  let n = null;
+  try { n = localStorage.getItem("tareas.nombre"); } catch (e) {}
+  if (!n) {
+    n = (prompt("¿Cuál es tu nombre? (aparecerá como autor de tus cambios)") || "").trim() || "Anónimo";
+    try { localStorage.setItem("tareas.nombre", n); } catch (e) {}
+  }
+  return n;
+}
+
+/* ---------- Persistir el handle de la carpeta en IndexedDB ---------- */
+function idb() {
+  return new Promise((res, rej) => {
+    const req = indexedDB.open("tareas-app", 1);
+    req.onupgradeneeded = () => req.result.createObjectStore("kv");
+    req.onsuccess = () => res(req.result);
+    req.onerror = () => rej(req.error);
+  });
+}
+async function idbSet(key, val) {
+  const db = await idb();
+  return new Promise((res, rej) => {
+    const tx = db.transaction("kv", "readwrite");
+    tx.objectStore("kv").put(val, key);
+    tx.oncomplete = res; tx.onerror = () => rej(tx.error);
+  });
+}
+async function idbGet(key) {
+  const db = await idb();
+  return new Promise((res, rej) => {
+    const req = db.transaction("kv").objectStore("kv").get(key);
+    req.onsuccess = () => res(req.result); req.onerror = () => rej(req.error);
+  });
+}
+
+/* ---------- Conexión con la carpeta ---------- */
+async function pickFolder() {
+  try {
+    rootHandle = await window.showDirectoryPicker({ mode: "readwrite" });
+  } catch (e) { return; } // usuario canceló
+  await idbSet("dirHandle", rootHandle);
+  await connect();
+}
+
+async function tryRestore() {
+  if (!window.showDirectoryPicker) { $("browserWarn").hidden = false; $("btnPick").disabled = true; return; }
+  try {
+    const h = await idbGet("dirHandle");
+    if (!h) return;
+    const perm = await h.queryPermission({ mode: "readwrite" });
+    if (perm === "granted") { rootHandle = h; await connect(); return; }
+    // Hay carpeta recordada pero el navegador exige un clic para reactivar el permiso
+    $("welcomeTitle").textContent = "Reconectar la carpeta";
+    $("welcomeMsg").textContent = "Haz clic para volver a activar el acceso a la carpeta de tareas que usaste la última vez.";
+    $("btnPick").textContent = "Reconectar";
+    $("btnPick").onclick = async () => {
+      const p = await h.requestPermission({ mode: "readwrite" });
+      if (p === "granted") { rootHandle = h; await connect(); }
+      else pickFolder();
+    };
+  } catch (e) { /* handle inválido: se elige de nuevo */ }
+}
+
+async function connect() {
+  tasksHandle = await rootHandle.getDirectoryHandle(SUBFOLDER, { create: true });
+  $("welcome").hidden = true;
+  $("app").hidden = false;
+  $("headerActions").hidden = false;
+  userName();
+  await loadAll();
+  clearInterval(refreshTimer);
+  refreshTimer = setInterval(() => {
+    // no refrescar mientras se edita para no perder lo escrito
+    if (!$("modalBg").classList.contains("open")) loadAll(true);
+  }, AUTO_REFRESH_MS);
+}
+
+/* ---------- Lectura de tareas ---------- */
+async function loadAll(silent) {
+  if (!tasksHandle) return;
+  const found = [];
+  const conflicts = [];
+  try {
+    for await (const [name, handle] of tasksHandle.entries()) {
+      if (handle.kind !== "file" || !name.endsWith(".json")) continue;
+      const lower = name.toLowerCase();
+      if (lower.includes("conflicted copy") || lower.includes("copia en conflicto") || lower.includes("conflicto de")) {
+        conflicts.push(name);
+        continue;
+      }
+      try {
+        const file = await handle.getFile();
+        const data = JSON.parse(await file.text());
+        if (!data || typeof data.nombre !== "string") continue;
+        found.push({ data, fileName: name, loadedStamp: stampOf(data) });
+      } catch (e) { /* archivo a medio sincronizar o corrupto: se omite */ }
+    }
+  } catch (e) {
+    setStatus("Sin acceso a la carpeta. Vuelve a conectarla.", false);
+    return;
+  }
+  tasks = found;
+  showConflicts(conflicts);
+  render();
+  const hora = new Date().toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit" });
+  setStatus("Actualizado a las " + hora, true);
+}
+
+function stampOf(data) {
+  return (data.ultimaEdicion && data.ultimaEdicion.cuando) || "";
+}
+
+function showConflicts(list) {
+  const b = $("conflictBanner");
+  if (!list.length) { b.hidden = true; return; }
+  b.hidden = false;
+  b.innerHTML = "⚠️ <b>Dropbox detectó ediciones simultáneas de la misma tarea.</b> Revisa estos archivos en la carpeta <b>tareas/</b>, conserva la versión correcta y borra la copia: <br>" +
+    list.map(n => "• " + escapeHtml(n)).join("<br>");
+}
+
+function setStatus(text, ok) {
+  $("statusText").textContent = text;
+  $("syncDot").className = "dot" + (ok ? "" : " off");
+}
+
+/* ---------- Escritura segura (detección de choques) ---------- */
+async function writeTask(fileName, data, expectedStamp) {
+  // Si otra persona guardó esta misma tarea después de que la cargamos, avisar antes de pisar su cambio.
+  if (expectedStamp !== undefined) {
+    try {
+      const fh = await tasksHandle.getFileHandle(fileName);
+      const current = JSON.parse(await (await fh.getFile()).text());
+      const currentStamp = stampOf(current);
+      if (currentStamp && currentStamp !== expectedStamp) {
+        const quien = (current.ultimaEdicion && current.ultimaEdicion.quien) || "otra persona";
+        const ok = confirm("⚠️ " + quien + " modificó esta tarea hace un momento.\n\n¿Sobrescribir con tu versión? (Cancelar conserva la de " + quien + " y recarga la lista)");
+        if (!ok) { await loadAll(); return false; }
+      }
+    } catch (e) { /* el archivo aún no existe o no se pudo leer: continuar */ }
+  }
+  data.ultimaEdicion = { quien: userName(), cuando: new Date().toISOString() };
+  const fh = await tasksHandle.getFileHandle(fileName, { create: true });
+  const w = await fh.createWritable();
+  await w.write(JSON.stringify(data, null, 2));
+  await w.close();
+  return true;
+}
+
+/* ---------- Semáforo de fechas ---------- */
+function semaforo(fecha) {
+  if (!fecha) return { clase: "sem-sinfecha", texto: "Sin fecha", chip: "" };
+  const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+  const [y, m, d] = fecha.split("-").map(Number);
+  const limite = new Date(y, m - 1, d);
+  const dias = Math.round((limite - hoy) / 86400000);
+  const fechaTxt = limite.toLocaleDateString("es", { day: "numeric", month: "short" });
+  if (dias < 0)  return { clase: "sem-vencida",  chip: "sem-vencida",  texto: "⛔ Vencida (" + fechaTxt + ")" };
+  if (dias === 0) return { clase: "sem-rojo",    chip: "sem-rojo",     texto: "🔴 ¡Vence HOY!" };
+  if (dias === 1) return { clase: "sem-amarillo",chip: "sem-amarillo", texto: "🟡 Vence mañana" };
+  return { clase: "", chip: "sem-verde", texto: "🟢 " + fechaTxt + " (" + dias + " días)" };
+}
+
+/* ---------- Render ---------- */
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+function orden(a, b) {
+  if (!!b.data.prioridad !== !!a.data.prioridad) return b.data.prioridad ? 1 : -1;
+  const fa = a.data.fechaLimite || "9999", fb = b.data.fechaLimite || "9999";
+  if (fa !== fb) return fa < fb ? -1 : 1;
+  return a.data.nombre.localeCompare(b.data.nombre);
+}
+
+function render() {
+  const pend = tasks.filter(t => !t.data.completada).sort(orden);
+  const done = tasks.filter(t => t.data.completada).sort(orden);
+
+  $("pendingList").innerHTML = pend.map(taskCard).join("");
+  $("emptyMsg").hidden = pend.length > 0;
+  $("pendTitle").textContent = "Pendientes (" + pend.length + ")";
+
+  $("doneSection").hidden = done.length === 0;
+  $("doneCount").textContent = done.length;
+  $("doneList").innerHTML = done.map(taskCard).join("");
+
+  bindCardEvents($("pendingList"));
+  bindCardEvents($("doneList"));
+}
+
+function taskCard(t) {
+  const d = t.data;
+  const sem = d.completada ? { clase: "", chip: "", texto: "" } : semaforo(d.fechaLimite);
+  const subs = Array.isArray(d.subtareas) ? d.subtareas : [];
+  const hechas = subs.filter(s => s.hecha).length;
+  const subsPend = subs.length - hechas;
+  const abierto = openSubtasks.has(t.fileName);
+  const editor = d.ultimaEdicion ? (d.ultimaEdicion.quien + " · " + new Date(d.ultimaEdicion.cuando).toLocaleDateString("es", { day: "numeric", month: "short" })) : "";
+
+  return `
+  <div class="task ${sem.clase} ${d.completada ? "completada" : ""}" data-file="${escapeHtml(t.fileName)}">
+    <div class="task-top">
+      <input type="checkbox" class="done-check" title="Marcar como completada" ${d.completada ? "checked" : ""} data-act="done">
+      <div class="task-main">
+        <p class="task-name">${escapeHtml(d.nombre)}</p>
+        ${d.proximoPaso ? `<p class="task-next">Próximo paso: <b>${escapeHtml(d.proximoPaso)}</b></p>` : ""}
+        <div class="task-meta">
+          ${!d.completada && sem.texto ? `<span class="chip chip-fecha ${sem.chip}">${sem.texto}</span>` : ""}
+          ${d.tiempoEstimado ? `<span class="chip">⏱ ${escapeHtml(d.tiempoEstimado)}</span>` : ""}
+          ${subs.length ? `<span class="chip chip-sub" data-act="toggle-subs">${abierto ? "▾" : "▸"} Subtareas ${hechas}/${subs.length}${subsPend && !d.completada ? " pendientes" : ""}</span>` : ""}
+          ${editor ? `<span class="chip chip-editor">✎ ${escapeHtml(editor)}</span>` : ""}
+        </div>
+      </div>
+      <button class="star-btn ${d.prioridad ? "on" : ""}" title="Prioridad" data-act="star">★</button>
+      <div class="task-actions">
+        <button class="icon-btn" title="Editar" data-act="edit">✏️</button>
+      </div>
+    </div>
+    ${subs.length ? `
+    <div class="subtasks ${abierto ? "open" : ""}">
+      <p class="subtask-hint">Deben completarse antes de ejecutar la tarea:</p>
+      ${subs.map((s, i) => `
+        <div class="subtask-row ${s.hecha ? "done" : ""}">
+          <input type="checkbox" id="sub-${escapeHtml(t.fileName)}-${i}" ${s.hecha ? "checked" : ""} data-act="sub" data-idx="${i}">
+          <label for="sub-${escapeHtml(t.fileName)}-${i}">${escapeHtml(s.texto)}</label>
+        </div>`).join("")}
+    </div>` : ""}
+  </div>`;
+}
+
+function bindCardEvents(container) {
+  container.querySelectorAll(".task").forEach(card => {
+    const fileName = card.dataset.file;
+    card.querySelectorAll("[data-act]").forEach(el => {
+      el.addEventListener("click", ev => handleAction(el.dataset.act, fileName, el, ev));
+    });
+  });
+}
+
+async function handleAction(act, fileName, el, ev) {
+  const t = tasks.find(x => x.fileName === fileName);
+  if (!t) return;
+
+  if (act === "toggle-subs") {
+    if (openSubtasks.has(fileName)) openSubtasks.delete(fileName); else openSubtasks.add(fileName);
+    render();
+    return;
+  }
+  if (act === "edit") { openModal(t); return; }
+
+  if (act === "star") {
+    t.data.prioridad = !t.data.prioridad;
+    if (await writeTask(fileName, t.data, t.loadedStamp)) { t.loadedStamp = stampOf(t.data); render(); }
+    return;
+  }
+  if (act === "done") {
+    const marcar = el.checked;
+    const subs = Array.isArray(t.data.subtareas) ? t.data.subtareas : [];
+    const pendientes = subs.filter(s => !s.hecha).length;
+    if (marcar && pendientes > 0 && !confirm("Esta tarea tiene " + pendientes + " subtarea(s) sin completar. ¿Marcarla como completada de todos modos?")) {
+      el.checked = false;
+      return;
+    }
+    t.data.completada = marcar;
+    if (await writeTask(fileName, t.data, t.loadedStamp)) { t.loadedStamp = stampOf(t.data); render(); }
+    return;
+  }
+  if (act === "sub") {
+    const i = Number(el.dataset.idx);
+    if (t.data.subtareas && t.data.subtareas[i]) {
+      t.data.subtareas[i].hecha = el.checked;
+      if (await writeTask(fileName, t.data, t.loadedStamp)) { t.loadedStamp = stampOf(t.data); render(); }
+    }
+  }
+}
+
+/* ---------- Modal crear / editar ---------- */
+function openModal(t) {
+  editingFile = t ? t.fileName : null;
+  $("modalTitle").textContent = t ? "Editar tarea" : "Nueva tarea";
+  $("btnDelete").hidden = !t;
+  const d = t ? t.data : {};
+  $("fNombre").value = d.nombre || "";
+  $("fPaso").value = d.proximoPaso || "";
+  $("fTiempo").value = d.tiempoEstimado || "";
+  $("fFecha").value = d.fechaLimite || "";
+  $("fPrioridad").checked = !!d.prioridad;
+  $("subEditList").innerHTML = "";
+  (d.subtareas || []).forEach(s => addSubRow(s.texto, s.hecha));
+  $("modalBg").classList.add("open");
+  $("fNombre").focus();
+}
+
+function closeModal() { $("modalBg").classList.remove("open"); editingFile = null; }
+
+function addSubRow(texto, hecha) {
+  const row = document.createElement("div");
+  row.className = "sub-edit-row";
+  row.innerHTML = `
+    <input type="checkbox" title="Ya está hecha" ${hecha ? "checked" : ""}>
+    <input type="text" placeholder="Descripción de la subtarea" value="">
+    <button class="rm" title="Quitar" type="button">✕</button>`;
+  row.querySelector("input[type=text]").value = texto || "";
+  row.querySelector(".rm").addEventListener("click", () => row.remove());
+  $("subEditList").appendChild(row);
+}
+
+function slugFileName(nombre) {
+  const slug = nombre.toLowerCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40) || "tarea";
+  const id = Math.random().toString(36).slice(2, 8);
+  return slug + "-" + id + ".json";
+}
+
+async function saveFromModal() {
+  const nombre = $("fNombre").value.trim();
+  if (!nombre) { alert("La tarea necesita un nombre."); $("fNombre").focus(); return; }
+
+  const subtareas = [...$("subEditList").querySelectorAll(".sub-edit-row")]
+    .map(r => ({ texto: r.querySelector("input[type=text]").value.trim(), hecha: r.querySelector("input[type=checkbox]").checked }))
+    .filter(s => s.texto);
+
+  const existing = editingFile ? tasks.find(x => x.fileName === editingFile) : null;
+  const data = existing ? existing.data : { creada: new Date().toISOString() };
+  data.nombre = nombre;
+  data.proximoPaso = $("fPaso").value.trim();
+  data.tiempoEstimado = $("fTiempo").value.trim();
+  data.fechaLimite = $("fFecha").value || "";
+  data.prioridad = $("fPrioridad").checked;
+  data.subtareas = subtareas;
+  if (existing === null) data.completada = false;
+
+  const fileName = editingFile || slugFileName(nombre);
+  const ok = await writeTask(fileName, data, existing ? existing.loadedStamp : undefined);
+  if (!ok) { closeModal(); return; }
+  closeModal();
+  await loadAll();
+}
+
+async function deleteFromModal() {
+  if (!editingFile) return;
+  if (!confirm("¿Eliminar esta tarea definitivamente? (Si solo terminó, mejor márcala como completada)")) return;
+  try { await tasksHandle.removeEntry(editingFile); } catch (e) {}
+  closeModal();
+  await loadAll();
+}
+
+/* ---------- Eventos globales ---------- */
+$("btnPick").onclick = pickFolder;
+$("btnNew").onclick = () => openModal(null);
+$("btnRefresh").onclick = () => loadAll();
+$("btnAddSub").onclick = () => addSubRow("", false);
+$("btnCancel").onclick = closeModal;
+$("btnSave").onclick = saveFromModal;
+$("btnDelete").onclick = deleteFromModal;
+$("doneToggle").onclick = () => {
+  const l = $("doneList");
+  l.hidden = !l.hidden;
+  $("doneToggle").firstChild.textContent = (l.hidden ? "▸" : "▾") + " Completadas (";
+};
+$("modalBg").addEventListener("click", ev => { if (ev.target === $("modalBg")) closeModal(); });
+document.addEventListener("keydown", ev => { if (ev.key === "Escape") closeModal(); });
+
+tryRestore();
+</script>
+</body>
+</html>
