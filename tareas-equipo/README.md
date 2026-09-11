@@ -24,6 +24,9 @@ como un archivo `.json` independiente.
 - **Vista de lista** (estilo Monday) con columnas: Tarea · Responsable ·
   Tiempo · Fecha límite. La barra de color de cada fila es el color de la
   persona responsable.
+- **Orden**: por defecto, prioritarias ⭐ primero y luego por fecha límite
+  más próxima. Clic en cualquier encabezado de columna para ordenar por ella
+  (segundo clic invierte, tercer clic vuelve al orden por defecto).
 - **Nombre, próximo paso, responsable y tiempo estimado** por tarea. El tiempo
   se elige con selectores de horas (0–12) y minutos (00/15/30/45) y se guarda
   como `tiempoMin` (minutos) en el JSON.
