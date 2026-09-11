@@ -113,6 +113,17 @@
   .chip-sub { cursor: pointer; user-select: none; background: var(--accent-soft); color: var(--accent); }
   .chip-sub:hover { background: #dbeafe; }
   .chip-editor { font-size: 11.5px; }
+  .chip-resp { background: #ede9fe; color: #6d28d9; font-weight: 600; }
+
+  /* Barra de filtros */
+  .filters { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-block: 14px 2px; }
+  .filters input[type=search], .filters select {
+    padding: 8px 11px; border: 1px solid var(--line); border-radius: 8px;
+    font-size: 14px; font-family: inherit; background: var(--card); color: var(--ink);
+  }
+  .filters input[type=search] { flex: 1; min-width: 150px; }
+  .filters input:focus, .filters select:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .filters .btn-small.active { background: var(--star); border-color: var(--star); color: #fff; }
 
   .star-btn {
     background: none; border: none; font-size: 22px; cursor: pointer;
@@ -212,6 +223,12 @@
   </div>
 
   <div id="app" hidden>
+    <div class="filters" id="filterBar">
+      <input type="search" id="fltBuscar" placeholder="🔍 Buscar tarea…">
+      <select id="fltResp" title="Filtrar por responsable"></select>
+      <button class="btn btn-small" id="fltStar" type="button" title="Mostrar solo las prioritarias">⭐ Prioritarias</button>
+      <button class="btn btn-small" id="fltClear" type="button" hidden>✕ Limpiar filtros</button>
+    </div>
     <div class="section-title" id="pendTitle">Pendientes</div>
     <div class="task-list" id="pendingList"></div>
     <div class="empty" id="emptyMsg" hidden>No hay tareas pendientes. 🎉</div>
@@ -236,6 +253,11 @@
     <div class="field">
       <label>Próximo paso a ejecutar</label>
       <input type="text" id="fPaso" placeholder="Ej.: Enviar borrador al cliente">
+    </div>
+    <div class="field">
+      <label>Responsable</label>
+      <input type="text" id="fResp" list="respList" placeholder="¿Quién la ejecuta?" autocomplete="off">
+      <datalist id="respList"></datalist>
     </div>
     <div class="field-row">
       <div class="field">
@@ -285,6 +307,11 @@ let tasks = [];           // [{data, fileName, loadedStamp}]
 let openSubtasks = new Set();  // nombres de archivo con subtareas expandidas
 let editingFile = null;   // fileName en edición, o null si es nueva
 let refreshTimer = null;
+
+/* Filtros (se recuerdan entre sesiones) */
+let filtro = { resp: "", star: false, texto: "" };
+try { Object.assign(filtro, JSON.parse(localStorage.getItem("tareas.filtro") || "{}")); } catch (e) {}
+function saveFiltro() { try { localStorage.setItem("tareas.filtro", JSON.stringify(filtro)); } catch (e) {} }
 
 const $ = id => document.getElementById(id);
 
@@ -456,6 +483,46 @@ function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
 
+/* ---------- Filtros ---------- */
+function norm(s) {
+  return String(s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+}
+
+function responsables() {
+  const set = new Set();
+  tasks.forEach(t => { if (t.data.responsable) set.add(t.data.responsable); });
+  return [...set].sort((a, b) => a.localeCompare(b));
+}
+
+function pasaFiltro(t) {
+  const d = t.data;
+  if (filtro.star && !d.prioridad) return false;
+  if (filtro.resp) {
+    if (filtro.resp === "__sin__") { if (d.responsable) return false; }
+    else if ((d.responsable || "") !== filtro.resp) return false;
+  }
+  if (filtro.texto) {
+    const blob = norm([d.nombre, d.proximoPaso, d.responsable, ...(d.subtareas || []).map(s => s.texto)].join(" "));
+    if (!blob.includes(norm(filtro.texto))) return false;
+  }
+  return true;
+}
+
+function updateFilterUI() {
+  // Opciones del select de responsable (conservando la selección actual)
+  const sel = $("fltResp");
+  const nombres = responsables();
+  if (filtro.resp && filtro.resp !== "__sin__" && !nombres.includes(filtro.resp)) nombres.push(filtro.resp);
+  sel.innerHTML = '<option value="">👤 Todos</option>' +
+    nombres.map(n => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join("") +
+    '<option value="__sin__">— Sin responsable —</option>';
+  sel.value = filtro.resp;
+  $("fltStar").classList.toggle("active", filtro.star);
+  $("fltClear").hidden = !(filtro.resp || filtro.star || filtro.texto);
+  // Autocompletado del campo Responsable del formulario
+  $("respList").innerHTML = nombres.map(n => `<option value="${escapeHtml(n)}">`).join("");
+}
+
 function orden(a, b) {
   if (!!b.data.prioridad !== !!a.data.prioridad) return b.data.prioridad ? 1 : -1;
   const fa = a.data.fechaLimite || "9999", fb = b.data.fechaLimite || "9999";
@@ -464,12 +531,16 @@ function orden(a, b) {
 }
 
 function render() {
-  const pend = tasks.filter(t => !t.data.completada).sort(orden);
-  const done = tasks.filter(t => t.data.completada).sort(orden);
+  updateFilterUI();
+  const hayFiltro = !!(filtro.resp || filtro.star || filtro.texto);
+  const pendTodas = tasks.filter(t => !t.data.completada);
+  const pend = pendTodas.filter(pasaFiltro).sort(orden);
+  const done = tasks.filter(t => t.data.completada && pasaFiltro(t)).sort(orden);
 
   $("pendingList").innerHTML = pend.map(taskCard).join("");
   $("emptyMsg").hidden = pend.length > 0;
-  $("pendTitle").textContent = "Pendientes (" + pend.length + ")";
+  $("emptyMsg").textContent = (hayFiltro && pendTodas.length) ? "Ninguna tarea coincide con el filtro." : "No hay tareas pendientes. 🎉";
+  $("pendTitle").textContent = "Pendientes (" + (hayFiltro ? pend.length + " de " + pendTodas.length : pend.length) + ")";
 
   $("doneSection").hidden = done.length === 0;
   $("doneCount").textContent = done.length;
@@ -497,6 +568,7 @@ function taskCard(t) {
         ${d.proximoPaso ? `<p class="task-next">Próximo paso: <b>${escapeHtml(d.proximoPaso)}</b></p>` : ""}
         <div class="task-meta">
           ${!d.completada && sem.texto ? `<span class="chip chip-fecha ${sem.chip}">${sem.texto}</span>` : ""}
+          ${d.responsable ? `<span class="chip chip-resp">👤 ${escapeHtml(d.responsable)}</span>` : ""}
           ${d.tiempoEstimado ? `<span class="chip">⏱ ${escapeHtml(d.tiempoEstimado)}</span>` : ""}
           ${subs.length ? `<span class="chip chip-sub" data-act="toggle-subs">${abierto ? "▾" : "▸"} Subtareas ${hechas}/${subs.length}${subsPend && !d.completada ? " pendientes" : ""}</span>` : ""}
           ${editor ? `<span class="chip chip-editor">✎ ${escapeHtml(editor)}</span>` : ""}
@@ -573,6 +645,7 @@ function openModal(t) {
   const d = t ? t.data : {};
   $("fNombre").value = d.nombre || "";
   $("fPaso").value = d.proximoPaso || "";
+  $("fResp").value = d.responsable || "";
   $("fTiempo").value = d.tiempoEstimado || "";
   $("fFecha").value = d.fechaLimite || "";
   $("fPrioridad").checked = !!d.prioridad;
@@ -616,6 +689,7 @@ async function saveFromModal() {
   const data = existing ? existing.data : { creada: new Date().toISOString() };
   data.nombre = nombre;
   data.proximoPaso = $("fPaso").value.trim();
+  data.responsable = $("fResp").value.trim();
   data.tiempoEstimado = $("fTiempo").value.trim();
   data.fechaLimite = $("fFecha").value || "";
   data.prioridad = $("fPrioridad").checked;
@@ -650,6 +724,16 @@ $("doneToggle").onclick = () => {
   l.hidden = !l.hidden;
   $("doneToggle").firstChild.textContent = (l.hidden ? "▸" : "▾") + " Completadas (";
 };
+$("fltResp").onchange = ev => { filtro.resp = ev.target.value; saveFiltro(); render(); };
+$("fltBuscar").oninput = ev => { filtro.texto = ev.target.value.trim(); saveFiltro(); render(); };
+$("fltStar").onclick = () => { filtro.star = !filtro.star; saveFiltro(); render(); };
+$("fltClear").onclick = () => {
+  filtro = { resp: "", star: false, texto: "" };
+  saveFiltro();
+  $("fltBuscar").value = "";
+  render();
+};
+$("fltBuscar").value = filtro.texto || "";
 $("modalBg").addEventListener("click", ev => { if (ev.target === $("modalBg")) closeModal(); });
 document.addEventListener("keydown", ev => { if (ev.key === "Escape") closeModal(); });
 

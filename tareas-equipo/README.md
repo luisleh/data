@@ -21,7 +21,10 @@ como un archivo `.json` independiente.
 
 ## Funciones
 
-- **Nombre, próximo paso y tiempo estimado** por tarea.
+- **Nombre, próximo paso, responsable y tiempo estimado** por tarea.
+- **Barra de filtros**: por responsable (👤), solo prioritarias (⭐) y buscador
+  de texto (busca en nombre, próximo paso, responsable y subtareas). Los
+  filtros se recuerdan entre sesiones en cada computadora.
 - **Semáforo de fecha límite**: 🟢 verde con tiempo → 🟡 amarillo cuando falta
   un día → 🔴 rojo el día del vencimiento → ⛔ vencida.
 - **⭐ Estrella de prioridad**: las tareas prioritarias suben al principio.
@@ -54,6 +57,7 @@ con el Bloc de notas:
 {
   "nombre": "Contrato Pérez",
   "proximoPaso": "Enviar borrador al cliente",
+  "responsable": "María",
   "tiempoEstimado": "2 horas",
   "fechaLimite": "2026-09-15",
   "prioridad": true,
