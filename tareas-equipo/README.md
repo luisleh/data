@@ -1,9 +1,5 @@
 # 📋 Tareas · Departamento Comercial · Vistazo Pharma Group
 
-> **Logo**: el encabezado trae un isotipo dibujado con los colores de Vistazo.
-> Para usar el logo oficial, copia el archivo de imagen a la carpeta con el
-> nombre `logo.png` (también sirve .jpg, .svg o .webp) — la app lo detecta sola.
-
 Sistema simple de tareas pendientes para un equipo pequeño, pensado para vivir
 dentro de una carpeta compartida de Dropbox. No necesita servidor, ni internet,
 ni instalación: es un solo archivo `index.html` que se abre en el navegador.
