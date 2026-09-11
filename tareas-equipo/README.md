@@ -43,6 +43,9 @@ como un archivo `.json` independiente.
 - **⭐ Estrella de prioridad**: las tareas prioritarias suben al principio.
 - **Subtareas previas**: se expanden con un clic para ver cuáles ya están ✓;
   al completar la tarea principal avisa si quedan subtareas pendientes.
+- **Comentarios por tarea** (chip 💬): historial de avance con autor y
+  fecha/hora; cualquiera puede agregar comentarios y borrarlos. El buscador
+  también busca dentro de los comentarios.
 - **Actualización automática** cada 30 segundos (y botón ⟳) para ver los
   cambios que Dropbox sincronizó de otros usuarios.
 

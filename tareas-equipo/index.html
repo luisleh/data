@@ -137,6 +137,26 @@
     background: var(--accent-soft); color: var(--accent); white-space: nowrap; font-weight: 600;
   }
   .chip-sub:hover { background: #d5e5f5; }
+  .chip-com {
+    font-size: 11.5px; padding: 2px 9px; border-radius: 999px; cursor: pointer; user-select: none;
+    background: var(--accent-soft); color: var(--accent); white-space: nowrap; font-weight: 600;
+  }
+  .chip-com:hover { background: #d5e5f5; }
+  .chip-com.empty { background: #f3f4f6; color: var(--muted); }
+
+  /* Comentarios */
+  .comments { display: none; padding: 8px 14px 12px 46px; background: #fafbfc; border-top: 1px dashed var(--line); }
+  .comments.open { display: block; }
+  .com-row { padding: 7px 0; border-bottom: 1px solid var(--line); font-size: 13.5px; }
+  .com-row:last-of-type { border-bottom: none; }
+  .com-head { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+  .com-head b { color: var(--ink); }
+  .com-head .rm-com { margin-left: auto; background: none; border: none; color: #9ca3af; cursor: pointer; font-size: 14px; padding: 0 4px; }
+  .com-head .rm-com:hover { color: var(--red); }
+  .com-text { margin-top: 2px; overflow-wrap: anywhere; }
+  .com-add { display: flex; gap: 8px; margin-top: 8px; }
+  .com-add input { flex: 1; padding: 7px 10px; border: 1px solid var(--line); border-radius: 8px; font-family: inherit; font-size: 13.5px; }
+  .com-add input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
 
   @media (max-width: 720px) {
     .lista-head { display: none; }
@@ -398,6 +418,7 @@ let rootHandle = null;    // carpeta elegida
 let tasksHandle = null;   // subcarpeta tareas/
 let tasks = [];           // [{data, fileName, loadedStamp}]
 let openSubtasks = new Set();  // nombres de archivo con subtareas expandidas
+let openComments = new Set();  // nombres de archivo con comentarios expandidos
 let editingFile = null;   // fileName en edición, o null si es nueva
 let refreshTimer = null;
 
@@ -489,8 +510,9 @@ async function connect() {
   await loadAll();
   clearInterval(refreshTimer);
   refreshTimer = setInterval(() => {
-    // no refrescar mientras se edita para no perder lo escrito
-    if (!$("modalBg").classList.contains("open")) loadAll(true);
+    // no refrescar mientras se edita (formulario abierto o comentario a medio escribir)
+    const escribiendo = document.activeElement && document.activeElement.closest && document.activeElement.closest(".com-add");
+    if (!$("modalBg").classList.contains("open") && !escribiendo) loadAll(true);
   }, AUTO_REFRESH_MS);
 }
 
@@ -761,7 +783,9 @@ function pasaFiltro(t) {
     else if ((d.responsable || "") !== filtro.resp) return false;
   }
   if (filtro.texto) {
-    const blob = norm([d.nombre, d.proximoPaso, d.responsable, ...(d.subtareas || []).map(s => s.texto)].join(" "));
+    const blob = norm([d.nombre, d.proximoPaso, d.responsable,
+      ...(d.subtareas || []).map(s => s.texto),
+      ...(d.comentarios || []).map(c => c.texto)].join(" "));
     if (!blob.includes(norm(filtro.texto))) return false;
   }
   return true;
@@ -854,8 +878,10 @@ function taskCard(t) {
   const d = t.data;
   const sem = semaforo(d.fechaLimite);
   const subs = Array.isArray(d.subtareas) ? d.subtareas : [];
+  const coms = Array.isArray(d.comentarios) ? d.comentarios : [];
   const hechas = subs.filter(s => s.hecha).length;
   const abierto = openSubtasks.has(t.fileName);
+  const abiertoCom = openComments.has(t.fileName);
   const color = d.completada ? "#d8dde4" : colorDe(d.responsable);
   const editor = d.ultimaEdicion ? ("Última edición: " + d.ultimaEdicion.quien + " · " + new Date(d.ultimaEdicion.cuando).toLocaleDateString("es", { day: "numeric", month: "short" })) : "";
   const tiempo = fmtTiempo(d);
@@ -869,6 +895,7 @@ function taskCard(t) {
           <button class="star-btn ${d.prioridad ? "on" : ""}" title="Prioridad" data-act="star">★</button>
           <span class="task-name">${escapeHtml(d.nombre)}</span>
           ${subs.length ? `<span class="chip-sub" data-act="toggle-subs">${abierto ? "▾" : "▸"} ${hechas}/${subs.length}</span>` : ""}
+          <span class="chip-com ${coms.length ? "" : "empty"}" data-act="toggle-com" title="Comentarios de la tarea">💬${coms.length ? " " + coms.length : ""}</span>
         </div>
         ${d.proximoPaso ? `<div class="task-next">Próximo paso: <b>${escapeHtml(d.proximoPaso)}</b></div>` : ""}
       </div>
@@ -886,7 +913,28 @@ function taskCard(t) {
           <label for="sub-${escapeHtml(t.fileName)}-${i}">${escapeHtml(s.texto)}</label>
         </div>`).join("")}
     </div>` : ""}
+    <div class="comments ${abiertoCom ? "open" : ""}">
+      ${coms.map((c, i) => `
+        <div class="com-row">
+          <div class="com-head">
+            <b>${escapeHtml(c.quien || "?")}</b> · ${fmtFechaHora(c.cuando)}
+            <button class="rm-com" title="Borrar comentario" data-act="del-com" data-idx="${i}" type="button">✕</button>
+          </div>
+          <div class="com-text">${escapeHtml(c.texto)}</div>
+        </div>`).join("")}
+      <div class="com-add">
+        <input type="text" placeholder="Escribe un comentario sobre el avance…">
+        <button class="btn btn-small" data-act="add-com" type="button">Agregar</button>
+      </div>
+    </div>
   </div>`;
+}
+
+function fmtFechaHora(iso) {
+  const f = new Date(iso);
+  if (isNaN(f)) return "";
+  return f.toLocaleDateString("es", { day: "numeric", month: "short", year: "numeric" }) +
+    " · " + f.toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit" });
 }
 
 function bindCardEvents(container) {
@@ -894,6 +942,12 @@ function bindCardEvents(container) {
     const fileName = card.dataset.file;
     card.querySelectorAll("[data-act]").forEach(el => {
       el.addEventListener("click", ev => handleAction(el.dataset.act, fileName, el, ev));
+    });
+    // Enter en el campo de comentario = agregar
+    card.querySelectorAll(".com-add input").forEach(inp => {
+      inp.addEventListener("keydown", ev => {
+        if (ev.key === "Enter") handleAction("add-com", fileName, inp.parentElement.querySelector("[data-act=add-com]"), ev);
+      });
     });
   });
 }
@@ -905,6 +959,33 @@ async function handleAction(act, fileName, el, ev) {
   if (act === "toggle-subs") {
     if (openSubtasks.has(fileName)) openSubtasks.delete(fileName); else openSubtasks.add(fileName);
     render();
+    return;
+  }
+  if (act === "toggle-com") {
+    if (openComments.has(fileName)) openComments.delete(fileName); else openComments.add(fileName);
+    render();
+    return;
+  }
+  if (act === "add-com") {
+    const input = el.closest(".comments").querySelector("input");
+    const texto = input.value.trim();
+    if (!texto) { input.focus(); return; }
+    if (!Array.isArray(t.data.comentarios)) t.data.comentarios = [];
+    t.data.comentarios.push({ texto, quien: userName(), cuando: new Date().toISOString() });
+    if (await writeTask(fileName, t.data, t.loadedStamp)) {
+      t.loadedStamp = stampOf(t.data);
+      openComments.add(fileName);
+      render();
+    }
+    return;
+  }
+  if (act === "del-com") {
+    const i = Number(el.dataset.idx);
+    const c = t.data.comentarios && t.data.comentarios[i];
+    if (!c) return;
+    if (!confirm("¿Borrar este comentario de " + (c.quien || "?") + "?\n\n«" + c.texto + "»")) return;
+    t.data.comentarios.splice(i, 1);
+    if (await writeTask(fileName, t.data, t.loadedStamp)) { t.loadedStamp = stampOf(t.data); render(); }
     return;
   }
   if (act === "edit") { openModal(t); return; }
