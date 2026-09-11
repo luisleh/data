@@ -87,39 +87,62 @@
   .welcome h2 { margin: 12px 0 8px; }
   .welcome p { color: var(--muted); max-width: 440px; margin: 8px auto 20px; line-height: 1.6; }
 
-  /* Tarjetas de tarea */
-  .task-list { display: flex; flex-direction: column; gap: 10px; }
-  .task {
-    background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow);
-    border-left: 5px solid var(--green);
-    padding: 14px 16px;
+  /* Vista de lista (estilo Monday) */
+  .lista { background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+  .lista-head, .row {
+    display: grid;
+    grid-template-columns: 40px minmax(220px, 1fr) 132px 92px 128px 44px;
+    align-items: center;
   }
-  .task.sem-amarillo { border-left-color: #f59e0b; }
-  .task.sem-rojo { border-left-color: var(--red); }
-  .task.sem-vencida { border-left-color: var(--overdue); }
-  .task.sem-sinfecha { border-left-color: #cbd5e1; }
-  .task.completada { opacity: .6; border-left-color: #cbd5e1; }
+  .lista-head {
+    font-size: 11.5px; text-transform: uppercase; letter-spacing: .05em;
+    color: var(--muted); font-weight: 600;
+    border-bottom: 2px solid var(--line);
+    padding: 9px 0;
+  }
+  .lista-head > span { padding: 0 8px; }
+
+  .task { border-bottom: 1px solid var(--line); border-left: 6px solid #d8dde4; }
+  .task:last-child { border-bottom: none; }
+  .task.completada { opacity: .55; }
   .task.completada .task-name { text-decoration: line-through; }
-
-  .task-top { display: flex; align-items: flex-start; gap: 10px; }
-  .task-main { flex: 1; min-width: 0; }
-  .task-name { font-weight: 600; font-size: 16px; margin: 0; overflow-wrap: anywhere; }
-  .task-next { font-size: 14px; color: var(--muted); margin: 4px 0 0; overflow-wrap: anywhere; }
+  .row { min-height: 48px; }
+  .row > div { padding: 7px 8px; min-width: 0; }
+  .c-check { display: flex; justify-content: center; }
+  .name-line { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+  .task-name { font-weight: 600; font-size: 14.5px; overflow-wrap: anywhere; }
+  .task-next { font-size: 12.5px; color: var(--muted); margin-top: 2px; overflow-wrap: anywhere; }
   .task-next b { color: var(--ink); font-weight: 500; }
+  .c-time { font-size: 13px; color: var(--muted); white-space: nowrap; }
 
-  .task-meta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; align-items: center; }
-  .chip {
-    font-size: 12.5px; padding: 3px 10px; border-radius: 999px;
-    background: #f3f4f6; color: var(--muted); white-space: nowrap;
+  .resp-pill {
+    display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis;
+    font-size: 12.5px; font-weight: 600; color: #fff; background: #9aa4b2;
+    padding: 3px 11px; border-radius: 999px; white-space: nowrap; vertical-align: middle;
   }
-  .chip-fecha.sem-verde   { background: var(--green-bg);  color: var(--green);  font-weight: 600; }
-  .chip-fecha.sem-amarillo{ background: var(--yellow-bg); color: var(--yellow); font-weight: 600; }
-  .chip-fecha.sem-rojo    { background: var(--red-bg);    color: var(--red);    font-weight: 700; }
-  .chip-fecha.sem-vencida { background: var(--overdue-bg);color: var(--overdue);font-weight: 700; }
-  .chip-sub { cursor: pointer; user-select: none; background: var(--accent-soft); color: var(--accent); }
-  .chip-sub:hover { background: #dbeafe; }
-  .chip-editor { font-size: 11.5px; }
-  .chip-resp { background: #ede9fe; color: #6d28d9; font-weight: 600; }
+  .date-pill {
+    display: inline-block; font-size: 12px; font-weight: 700; color: #fff;
+    padding: 3px 11px; border-radius: 999px; background: #b6bfc9; white-space: nowrap;
+  }
+  .date-pill.sem-verde   { background: var(--green); }
+  .date-pill.sem-amarillo{ background: #f59e0b; }
+  .date-pill.sem-rojo    { background: var(--red); }
+  .date-pill.sem-vencida { background: var(--overdue); }
+
+  .chip-sub {
+    font-size: 11.5px; padding: 2px 9px; border-radius: 999px; cursor: pointer; user-select: none;
+    background: var(--accent-soft); color: var(--accent); white-space: nowrap; font-weight: 600;
+  }
+  .chip-sub:hover { background: #d5e5f5; }
+
+  @media (max-width: 720px) {
+    .lista-head { display: none; }
+    .row { grid-template-columns: 36px 1fr 44px; }
+    .c-check { grid-column: 1; grid-row: 1; }
+    .c-name { grid-column: 2; grid-row: 1; }
+    .c-actions { grid-column: 3; grid-row: 1; }
+    .c-resp, .c-time, .c-date { grid-column: 2; padding-top: 0; }
+  }
 
   /* Barra de filtros */
   .filters { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-block: 14px 2px; }
@@ -132,23 +155,22 @@
   .filters .btn-small.active { background: var(--star); border-color: var(--star); color: #fff; }
 
   .star-btn {
-    background: none; border: none; font-size: 22px; cursor: pointer;
-    color: #d1d5db; padding: 0 2px; line-height: 1;
+    background: none; border: none; font-size: 18px; cursor: pointer;
+    color: #d1d5db; padding: 0; line-height: 1;
   }
   .star-btn.on { color: var(--star); }
   .star-btn:hover { transform: scale(1.15); }
 
-  .done-check { width: 19px; height: 19px; margin-top: 2px; cursor: pointer; accent-color: var(--green); }
+  .done-check { width: 17px; height: 17px; cursor: pointer; accent-color: var(--green); }
 
-  .task-actions { display: flex; gap: 4px; }
   .icon-btn {
-    background: none; border: none; cursor: pointer; font-size: 15px;
+    background: none; border: none; cursor: pointer; font-size: 14px;
     color: #9ca3af; padding: 4px; border-radius: 6px;
   }
   .icon-btn:hover { background: #f3f4f6; color: var(--ink); }
 
   /* Subtareas */
-  .subtasks { margin-top: 12px; border-top: 1px dashed var(--line); padding-top: 10px; display: none; }
+  .subtasks { display: none; padding: 6px 14px 12px 46px; background: #fafbfc; border-top: 1px dashed var(--line); }
   .subtasks.open { display: block; }
   .subtask-row { display: flex; align-items: center; gap: 8px; padding: 4px 0; font-size: 14px; }
   .subtask-row input { width: 16px; height: 16px; accent-color: var(--accent); cursor: pointer; }
@@ -185,6 +207,19 @@
   .resp-row select { flex: 1; }
 
   /* Modal de equipo */
+  .color-dot {
+    width: 20px; height: 20px; border-radius: 50%; border: 2px solid #fff;
+    box-shadow: 0 0 0 1px var(--line); cursor: pointer; flex: none; padding: 0;
+  }
+  .swatches { display: flex; flex-wrap: wrap; gap: 7px; padding: 8px 0 12px 32px; border-bottom: 1px solid var(--line); }
+  .swatches button {
+    width: 24px; height: 24px; border-radius: 50%; cursor: pointer;
+    border: 1px solid rgba(0,0,0,.12); padding: 0;
+  }
+  .swatches button.sel { outline: 2.5px solid var(--ink); outline-offset: 1px; }
+  .time-row { display: flex; gap: 8px; align-items: center; }
+  .time-row select { flex: 1; }
+  .time-row span { font-size: 13px; color: var(--muted); }
   .team-row { display: flex; align-items: center; gap: 8px; padding: 7px 4px; border-bottom: 1px solid var(--line); font-size: 14px; }
   .team-row span { flex: 1; overflow-wrap: anywhere; }
   .team-row .rm { background: none; border: none; color: #9ca3af; cursor: pointer; font-size: 16px; }
@@ -253,12 +288,17 @@
       <button class="btn btn-small" id="fltClear" type="button" hidden>✕ Limpiar filtros</button>
     </div>
     <div class="section-title" id="pendTitle">Pendientes</div>
-    <div class="task-list" id="pendingList"></div>
+    <div class="lista" id="pendingWrap">
+      <div class="lista-head">
+        <span></span><span>Tarea</span><span>Responsable</span><span>Tiempo</span><span>Fecha límite</span><span></span>
+      </div>
+      <div id="pendingList"></div>
+    </div>
     <div class="empty" id="emptyMsg" hidden>No hay tareas pendientes. 🎉</div>
 
     <div id="doneSection" hidden>
       <div class="section-title" style="cursor:pointer" id="doneToggle">▸ Completadas (<span id="doneCount">0</span>)</div>
-      <div class="task-list" id="doneList" hidden></div>
+      <div class="lista" id="doneWrap" hidden><div id="doneList"></div></div>
     </div>
   </div>
 
@@ -287,7 +327,10 @@
     <div class="field-row">
       <div class="field">
         <label>Tiempo estimado</label>
-        <input type="text" id="fTiempo" placeholder="Ej.: 2 horas">
+        <div class="time-row">
+          <select id="fHoras"></select><span>h</span>
+          <select id="fMin"></select><span>min</span>
+        </div>
       </div>
       <div class="field">
         <label>Fecha límite</label>
@@ -342,6 +385,12 @@
 const SUBFOLDER = "tareas";
 const AUTO_REFRESH_MS = 30000;
 
+/* Paleta de colores por persona (sin repetirse) */
+const PALETA = ["#0086c0", "#00a25b", "#e2445c", "#ff8b3d", "#a25ddc", "#579bfc",
+                "#0f9b9b", "#d9327e", "#7ca10c", "#99623c", "#1d4f91", "#64748b",
+                "#8e2b4f", "#037f4c"];
+const COLOR_GRIS = "#9aa4b2"; // para nombres sin color asignado
+
 let rootHandle = null;    // carpeta elegida
 let tasksHandle = null;   // subcarpeta tareas/
 let tasks = [];           // [{data, fileName, loadedStamp}]
@@ -349,7 +398,7 @@ let openSubtasks = new Set();  // nombres de archivo con subtareas expandidas
 let editingFile = null;   // fileName en edición, o null si es nueva
 let refreshTimer = null;
 
-let equipo = [];          // lista compartida de responsables (equipo.json)
+let equipo = [];          // lista compartida de responsables: [{nombre, color}] (equipo.json)
 let equipoExiste = false; // ¿ya hay un equipo.json en la carpeta?
 
 /* Filtros (se recuerdan entre sesiones) */
@@ -511,16 +560,36 @@ async function writeTask(fileName, data, expectedStamp) {
 
 /* ---------- Semáforo de fechas ---------- */
 function semaforo(fecha) {
-  if (!fecha) return { clase: "sem-sinfecha", texto: "Sin fecha", chip: "" };
+  if (!fecha) return { chip: "", texto: "Sin fecha" };
   const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
   const [y, m, d] = fecha.split("-").map(Number);
   const limite = new Date(y, m - 1, d);
   const dias = Math.round((limite - hoy) / 86400000);
   const fechaTxt = limite.toLocaleDateString("es", { day: "numeric", month: "short" });
-  if (dias < 0)  return { clase: "sem-vencida",  chip: "sem-vencida",  texto: "⛔ Vencida (" + fechaTxt + ")" };
-  if (dias === 0) return { clase: "sem-rojo",    chip: "sem-rojo",     texto: "🔴 ¡Vence HOY!" };
-  if (dias === 1) return { clase: "sem-amarillo",chip: "sem-amarillo", texto: "🟡 Vence mañana" };
-  return { clase: "", chip: "sem-verde", texto: "🟢 " + fechaTxt + " (" + dias + " días)" };
+  if (dias < 0)  return { chip: "sem-vencida",  texto: "⛔ Vencida · " + fechaTxt };
+  if (dias === 0) return { chip: "sem-rojo",     texto: "¡Vence HOY!" };
+  if (dias === 1) return { chip: "sem-amarillo", texto: "Mañana" };
+  return { chip: "sem-verde", texto: fechaTxt + " · " + dias + " d" };
+}
+
+/* ---------- Tiempo estimado (horas y minutos) ---------- */
+function fmtTiempo(d) {
+  const min = Number(d.tiempoMin);
+  if (Number.isFinite(min) && min > 0) {
+    const h = Math.floor(min / 60), m = min % 60;
+    return (h ? h + " h" : "") + (h && m ? " " : "") + (m ? m + " min" : "");
+  }
+  return d.tiempoEstimado || ""; // tareas guardadas con el formato viejo (texto libre)
+}
+
+/* Extrae horas/minutos de una tarea, entendiendo también el texto viejo ("2 horas") */
+function tiempoHM(d) {
+  const min = Number(d.tiempoMin);
+  if (Number.isFinite(min) && min >= 0) return { h: Math.floor(min / 60), m: min % 60 };
+  const s = String(d.tiempoEstimado || "");
+  const h = (s.match(/(\d+)\s*h/i) || s.match(/(\d+)\s*hora/i) || [0, 0])[1];
+  const m = (s.match(/(\d+)\s*m/i) || [0, 0])[1];
+  return { h: Number(h) || 0, m: Number(m) || 0 };
 }
 
 /* ---------- Render ---------- */
@@ -533,13 +602,41 @@ async function loadEquipo() {
   try {
     const fh = await rootHandle.getFileHandle("equipo.json");
     const data = JSON.parse(await (await fh.getFile()).text());
-    equipo = Array.isArray(data.miembros) ? data.miembros.filter(x => typeof x === "string" && x.trim()) : [];
+    const raw = Array.isArray(data.miembros) ? data.miembros : [];
+    // acepta el formato viejo (solo nombres) y el nuevo ({nombre, color})
+    equipo = raw
+      .map(x => typeof x === "string" ? { nombre: x, color: null } : { nombre: x && x.nombre, color: (x && x.color) || null })
+      .filter(m => typeof m.nombre === "string" && m.nombre.trim());
     equipoExiste = true;
   } catch (e) {
     // Aún no hay equipo.json: proponer los nombres ya usados en las tareas
-    if (!equipoExiste) equipo = responsablesEnTareas();
+    if (!equipoExiste) equipo = responsablesEnTareas().map(n => ({ nombre: n, color: null }));
   }
-  equipo.sort((a, b) => a.localeCompare(b));
+  asignarColoresFaltantes();
+  equipo.sort((a, b) => a.nombre.localeCompare(b.nombre));
+}
+
+/* Garantiza que cada miembro tenga color y que no haya dos iguales */
+function asignarColoresFaltantes() {
+  const usados = new Set();
+  for (const m of equipo) {
+    if (!m.color || usados.has(m.color)) {
+      m.color = PALETA.find(c => !usados.has(c)) ||
+        "hsl(" + Math.floor(Math.random() * 360) + ", 55%, 42%)"; // equipo más grande que la paleta
+    }
+    usados.add(m.color);
+  }
+}
+
+function coloresLibres(propio) {
+  const usados = new Set(equipo.map(m => m.color));
+  if (propio) usados.delete(propio);
+  return PALETA.filter(c => !usados.has(c));
+}
+
+function colorDe(nombre) {
+  const m = equipo.find(x => x.nombre === nombre);
+  return (m && m.color) || COLOR_GRIS;
 }
 
 async function saveEquipo() {
@@ -559,13 +656,36 @@ function renderTeam() {
     list.innerHTML = '<p class="team-empty">Aún no hay nadie en la lista. Agrega a las personas del equipo abajo.</p>';
     return;
   }
-  list.innerHTML = equipo.map((n, i) => `
-    <div class="team-row"><span>👤 ${escapeHtml(n)}</span>
+  list.innerHTML = equipo.map((m, i) => `
+    <div class="team-row">
+      <button class="color-dot" style="background:${m.color}" data-idx="${i}" title="Cambiar color" type="button"></button>
+      <span>${escapeHtml(m.nombre)}</span>
       <button class="rm" title="Quitar de la lista" data-idx="${i}" type="button">✕</button>
+    </div>
+    <div class="swatches" id="sw-${i}" hidden>
+      ${[m.color, ...coloresLibres(m.color).filter(c => c !== m.color)].map(c =>
+        `<button type="button" style="background:${c}" class="${c === m.color ? "sel" : ""}" data-idx="${i}" data-color="${c}" title="${c === m.color ? "Color actual" : "Usar este color"}"></button>`).join("")}
     </div>`).join("");
+
+  list.querySelectorAll(".color-dot").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const sw = $("sw-" + btn.dataset.idx);
+      const abrir = sw.hidden;
+      list.querySelectorAll(".swatches").forEach(s => s.hidden = true);
+      sw.hidden = !abrir;
+    });
+  });
+  list.querySelectorAll(".swatches button").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      equipo[Number(btn.dataset.idx)].color = btn.dataset.color;
+      await saveEquipo();
+      renderTeam();
+      render();
+    });
+  });
   list.querySelectorAll(".rm").forEach(btn => {
     btn.addEventListener("click", async () => {
-      const nombre = equipo[Number(btn.dataset.idx)];
+      const nombre = equipo[Number(btn.dataset.idx)].nombre;
       const enUso = tasks.filter(t => t.data.responsable === nombre && !t.data.completada).length;
       const msg = enUso
         ? nombre + " tiene " + enUso + " tarea(s) pendiente(s) asignada(s); seguirán mostrando su nombre. ¿Quitarle de la lista?"
@@ -582,9 +702,10 @@ function renderTeam() {
 async function addTeamMember() {
   const nombre = $("teamNew").value.trim();
   if (!nombre) return;
-  if (equipo.some(n => norm(n) === norm(nombre))) { alert(nombre + " ya está en la lista."); return; }
-  equipo.push(nombre);
-  equipo.sort((a, b) => a.localeCompare(b));
+  if (equipo.some(m => norm(m.nombre) === norm(nombre))) { alert(nombre + " ya está en la lista."); return; }
+  const libres = coloresLibres();
+  equipo.push({ nombre, color: libres[0] || "hsl(" + Math.floor(Math.random() * 360) + ", 55%, 42%)" });
+  equipo.sort((a, b) => a.nombre.localeCompare(b.nombre));
   await saveEquipo();
   $("teamNew").value = "";
   $("teamNew").focus();
@@ -606,7 +727,7 @@ function closeTeamModal() {
 
 function fillRespSelect(actual) {
   const sel = $("fResp");
-  const nombres = [...equipo];
+  const nombres = equipo.map(m => m.nombre);
   if (actual && !nombres.includes(actual)) nombres.push(actual); // respeta un nombre viejo ya asignado
   sel.innerHTML = '<option value="">— Sin asignar —</option>' +
     nombres.map(n => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join("");
@@ -641,7 +762,7 @@ function pasaFiltro(t) {
 function updateFilterUI() {
   // Opciones del select de responsable: lista de equipo + nombres ya usados en tareas
   const sel = $("fltResp");
-  const nombres = [...new Set([...equipo, ...responsablesEnTareas()])].sort((a, b) => a.localeCompare(b));
+  const nombres = [...new Set([...equipo.map(m => m.nombre), ...responsablesEnTareas()])].sort((a, b) => a.localeCompare(b));
   if (filtro.resp && filtro.resp !== "__sin__" && !nombres.includes(filtro.resp)) nombres.push(filtro.resp);
   sel.innerHTML = '<option value="">👤 Todos</option>' +
     nombres.map(n => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join("") +
@@ -666,6 +787,7 @@ function render() {
   const done = tasks.filter(t => t.data.completada && pasaFiltro(t)).sort(orden);
 
   $("pendingList").innerHTML = pend.map(taskCard).join("");
+  $("pendingWrap").hidden = pend.length === 0;
   $("emptyMsg").hidden = pend.length > 0;
   $("emptyMsg").textContent = (hayFiltro && pendTodas.length) ? "Ninguna tarea coincide con el filtro." : "No hay tareas pendientes. 🎉";
   $("pendTitle").textContent = "Pendientes (" + (hayFiltro ? pend.length + " de " + pendTodas.length : pend.length) + ")";
@@ -680,32 +802,30 @@ function render() {
 
 function taskCard(t) {
   const d = t.data;
-  const sem = d.completada ? { clase: "", chip: "", texto: "" } : semaforo(d.fechaLimite);
+  const sem = semaforo(d.fechaLimite);
   const subs = Array.isArray(d.subtareas) ? d.subtareas : [];
   const hechas = subs.filter(s => s.hecha).length;
-  const subsPend = subs.length - hechas;
   const abierto = openSubtasks.has(t.fileName);
-  const editor = d.ultimaEdicion ? (d.ultimaEdicion.quien + " · " + new Date(d.ultimaEdicion.cuando).toLocaleDateString("es", { day: "numeric", month: "short" })) : "";
+  const color = d.completada ? "#d8dde4" : colorDe(d.responsable);
+  const editor = d.ultimaEdicion ? ("Última edición: " + d.ultimaEdicion.quien + " · " + new Date(d.ultimaEdicion.cuando).toLocaleDateString("es", { day: "numeric", month: "short" })) : "";
+  const tiempo = fmtTiempo(d);
 
   return `
-  <div class="task ${sem.clase} ${d.completada ? "completada" : ""}" data-file="${escapeHtml(t.fileName)}">
-    <div class="task-top">
-      <input type="checkbox" class="done-check" title="Marcar como completada" ${d.completada ? "checked" : ""} data-act="done">
-      <div class="task-main">
-        <p class="task-name">${escapeHtml(d.nombre)}</p>
-        ${d.proximoPaso ? `<p class="task-next">Próximo paso: <b>${escapeHtml(d.proximoPaso)}</b></p>` : ""}
-        <div class="task-meta">
-          ${!d.completada && sem.texto ? `<span class="chip chip-fecha ${sem.chip}">${sem.texto}</span>` : ""}
-          ${d.responsable ? `<span class="chip chip-resp">👤 ${escapeHtml(d.responsable)}</span>` : ""}
-          ${d.tiempoEstimado ? `<span class="chip">⏱ ${escapeHtml(d.tiempoEstimado)}</span>` : ""}
-          ${subs.length ? `<span class="chip chip-sub" data-act="toggle-subs">${abierto ? "▾" : "▸"} Subtareas ${hechas}/${subs.length}${subsPend && !d.completada ? " pendientes" : ""}</span>` : ""}
-          ${editor ? `<span class="chip chip-editor">✎ ${escapeHtml(editor)}</span>` : ""}
+  <div class="task ${d.completada ? "completada" : ""}" data-file="${escapeHtml(t.fileName)}" style="border-left-color:${color}" ${editor ? `title="${escapeHtml(editor)}"` : ""}>
+    <div class="row">
+      <div class="c-check"><input type="checkbox" class="done-check" title="Marcar como completada" ${d.completada ? "checked" : ""} data-act="done"></div>
+      <div class="c-name">
+        <div class="name-line">
+          <button class="star-btn ${d.prioridad ? "on" : ""}" title="Prioridad" data-act="star">★</button>
+          <span class="task-name">${escapeHtml(d.nombre)}</span>
+          ${subs.length ? `<span class="chip-sub" data-act="toggle-subs">${abierto ? "▾" : "▸"} ${hechas}/${subs.length}</span>` : ""}
         </div>
+        ${d.proximoPaso ? `<div class="task-next">Próximo paso: <b>${escapeHtml(d.proximoPaso)}</b></div>` : ""}
       </div>
-      <button class="star-btn ${d.prioridad ? "on" : ""}" title="Prioridad" data-act="star">★</button>
-      <div class="task-actions">
-        <button class="icon-btn" title="Editar" data-act="edit">✏️</button>
-      </div>
+      <div class="c-resp">${d.responsable ? `<span class="resp-pill" style="background:${d.completada ? COLOR_GRIS : colorDe(d.responsable)}">${escapeHtml(d.responsable)}</span>` : ""}</div>
+      <div class="c-time">${tiempo ? "⏱ " + escapeHtml(tiempo) : ""}</div>
+      <div class="c-date">${d.completada ? "" : `<span class="date-pill ${sem.chip}">${sem.texto}</span>`}</div>
+      <div class="c-actions"><button class="icon-btn" title="Editar" data-act="edit">✏️</button></div>
     </div>
     ${subs.length ? `
     <div class="subtasks ${abierto ? "open" : ""}">
@@ -774,7 +894,9 @@ function openModal(t) {
   $("fNombre").value = d.nombre || "";
   $("fPaso").value = d.proximoPaso || "";
   fillRespSelect(d.responsable || "");
-  $("fTiempo").value = d.tiempoEstimado || "";
+  const hm = t ? tiempoHM(d) : { h: 0, m: 0 };
+  $("fHoras").value = String(Math.min(hm.h, 12));
+  $("fMin").value = String([0, 15, 30, 45].reduce((a, b) => Math.abs(b - hm.m) < Math.abs(a - hm.m) ? b : a));
   $("fFecha").value = d.fechaLimite || "";
   $("fPrioridad").checked = !!d.prioridad;
   $("subEditList").innerHTML = "";
@@ -818,7 +940,8 @@ async function saveFromModal() {
   data.nombre = nombre;
   data.proximoPaso = $("fPaso").value.trim();
   data.responsable = $("fResp").value;
-  data.tiempoEstimado = $("fTiempo").value.trim();
+  data.tiempoMin = Number($("fHoras").value) * 60 + Number($("fMin").value);
+  data.tiempoEstimado = fmtTiempo({ tiempoMin: data.tiempoMin }); // legible al abrir el .json a mano
   data.fechaLimite = $("fFecha").value || "";
   data.prioridad = $("fPrioridad").checked;
   data.subtareas = subtareas;
@@ -848,10 +971,14 @@ $("btnCancel").onclick = closeModal;
 $("btnSave").onclick = saveFromModal;
 $("btnDelete").onclick = deleteFromModal;
 $("doneToggle").onclick = () => {
-  const l = $("doneList");
+  const l = $("doneWrap");
   l.hidden = !l.hidden;
   $("doneToggle").firstChild.textContent = (l.hidden ? "▸" : "▾") + " Completadas (";
 };
+
+/* Opciones de los selectores de tiempo */
+$("fHoras").innerHTML = Array.from({ length: 13 }, (_, h) => `<option value="${h}">${h}</option>`).join("");
+$("fMin").innerHTML = [0, 15, 30, 45].map(m => `<option value="${m}">${String(m).padStart(2, "0")}</option>`).join("");
 $("fltResp").onchange = ev => { filtro.resp = ev.target.value; saveFiltro(); render(); };
 $("fltBuscar").oninput = ev => { filtro.texto = ev.target.value.trim(); saveFiltro(); render(); };
 $("fltStar").onclick = () => { filtro.star = !filtro.star; saveFiltro(); render(); };

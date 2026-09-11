@@ -21,10 +21,17 @@ como un archivo `.json` independiente.
 
 ## Funciones
 
-- **Nombre, próximo paso, responsable y tiempo estimado** por tarea.
+- **Vista de lista** (estilo Monday) con columnas: Tarea · Responsable ·
+  Tiempo · Fecha límite. La barra de color de cada fila es el color de la
+  persona responsable.
+- **Nombre, próximo paso, responsable y tiempo estimado** por tarea. El tiempo
+  se elige con selectores de horas (0–12) y minutos (00/15/30/45) y se guarda
+  como `tiempoMin` (minutos) en el JSON.
 - **Lista de equipo editable y compartida** (botón 👥 Equipo): los responsables
   se eligen siempre de esa lista; se guarda como `equipo.json` en la carpeta,
-  así todos ven los mismos nombres.
+  así todos ven los mismos nombres. Cada persona tiene un **color propio que
+  no puede repetirse** (clic en el punto de color para cambiarlo; solo se
+  ofrecen los colores libres).
 - **Barra de filtros**: por responsable (👤), solo prioritarias (⭐) y buscador
   de texto (busca en nombre, próximo paso, responsable y subtareas). Los
   filtros se recuerdan entre sesiones en cada computadora.
