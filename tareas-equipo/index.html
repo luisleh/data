@@ -170,11 +170,22 @@
   .modal h2 { margin: 0 0 16px; font-size: 18px; }
   .field { margin-bottom: 14px; }
   .field label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 5px; }
-  .field input[type=text], .field input[type=date], .field textarea {
+  .field input[type=text], .field input[type=date], .field textarea, .field select {
     width: 100%; padding: 9px 11px; border: 1px solid var(--line); border-radius: 8px;
     font-size: 14px; font-family: inherit; background: #fff; color: var(--ink);
   }
-  .field input:focus, .field textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .field input:focus, .field textarea:focus, .field select:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .resp-row { display: flex; gap: 8px; align-items: center; }
+  .resp-row select { flex: 1; }
+
+  /* Modal de equipo */
+  .team-row { display: flex; align-items: center; gap: 8px; padding: 7px 4px; border-bottom: 1px solid var(--line); font-size: 14px; }
+  .team-row span { flex: 1; overflow-wrap: anywhere; }
+  .team-row .rm { background: none; border: none; color: #9ca3af; cursor: pointer; font-size: 16px; }
+  .team-row .rm:hover { color: var(--red); }
+  .team-add { display: flex; gap: 8px; margin-top: 14px; }
+  .team-add input { flex: 1; padding: 8px 11px; border: 1px solid var(--line); border-radius: 8px; font-size: 14px; font-family: inherit; }
+  .team-empty { color: var(--muted); font-size: 14px; padding: 10px 0; }
   .field-row { display: flex; gap: 12px; flex-wrap: wrap; }
   .field-row .field { flex: 1; min-width: 160px; }
   .check-field { display: flex; align-items: center; gap: 8px; font-size: 14px; margin-bottom: 14px; }
@@ -203,6 +214,7 @@
     <h1><span class="logo">📋</span> Tareas del Equipo</h1>
     <div class="header-actions" id="headerActions" hidden>
       <span class="status-bar" id="statusBar"><span class="dot" id="syncDot"></span><span id="statusText"></span></span>
+      <button class="btn" id="btnTeamHdr" title="Editar la lista de responsables">👥 Equipo</button>
       <button class="btn" id="btnRefresh" title="Volver a leer los archivos de la carpeta">⟳ Actualizar</button>
       <button class="btn btn-primary" id="btnNew">+ Nueva tarea</button>
     </div>
@@ -256,8 +268,10 @@
     </div>
     <div class="field">
       <label>Responsable</label>
-      <input type="text" id="fResp" list="respList" placeholder="¿Quién la ejecuta?" autocomplete="off">
-      <datalist id="respList"></datalist>
+      <div class="resp-row">
+        <select id="fResp"></select>
+        <button class="btn btn-small" id="btnTeam" type="button" title="Agregar o quitar personas de la lista">👥 Editar lista</button>
+      </div>
     </div>
     <div class="field-row">
       <div class="field">
@@ -287,6 +301,22 @@
   </div>
 </div>
 
+<!-- Modal de equipo -->
+<div class="modal-bg" id="teamBg" style="z-index:60">
+  <div class="modal" style="max-width:420px">
+    <h2>👥 Equipo de responsables</h2>
+    <p style="font-size:13px; color:var(--muted); margin:0 0 10px;">Esta lista es compartida: se guarda en la carpeta de Dropbox (<b>equipo.json</b>) y todos la ven igual.</p>
+    <div id="teamList"></div>
+    <div class="team-add">
+      <input type="text" id="teamNew" placeholder="Nombre de la persona">
+      <button class="btn btn-small" id="btnTeamAdd" type="button">+ Agregar</button>
+    </div>
+    <div class="modal-actions">
+      <div class="right"><button class="btn btn-primary" id="btnTeamClose" type="button">Listo</button></div>
+    </div>
+  </div>
+</div>
+
 <script>
 "use strict";
 
@@ -307,6 +337,9 @@ let tasks = [];           // [{data, fileName, loadedStamp}]
 let openSubtasks = new Set();  // nombres de archivo con subtareas expandidas
 let editingFile = null;   // fileName en edición, o null si es nueva
 let refreshTimer = null;
+
+let equipo = [];          // lista compartida de responsables (equipo.json)
+let equipoExiste = false; // ¿ya hay un equipo.json en la carpeta?
 
 /* Filtros (se recuerdan entre sesiones) */
 let filtro = { resp: "", star: false, texto: "" };
@@ -418,6 +451,7 @@ async function loadAll(silent) {
     return;
   }
   tasks = found;
+  await loadEquipo();
   showConflicts(conflicts);
   render();
   const hora = new Date().toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit" });
@@ -483,12 +517,97 @@ function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
 
+/* ---------- Equipo (lista compartida de responsables) ---------- */
+async function loadEquipo() {
+  try {
+    const fh = await rootHandle.getFileHandle("equipo.json");
+    const data = JSON.parse(await (await fh.getFile()).text());
+    equipo = Array.isArray(data.miembros) ? data.miembros.filter(x => typeof x === "string" && x.trim()) : [];
+    equipoExiste = true;
+  } catch (e) {
+    // Aún no hay equipo.json: proponer los nombres ya usados en las tareas
+    if (!equipoExiste) equipo = responsablesEnTareas();
+  }
+  equipo.sort((a, b) => a.localeCompare(b));
+}
+
+async function saveEquipo() {
+  const fh = await rootHandle.getFileHandle("equipo.json", { create: true });
+  const w = await fh.createWritable();
+  await w.write(JSON.stringify({
+    miembros: equipo,
+    ultimaEdicion: { quien: userName(), cuando: new Date().toISOString() }
+  }, null, 2));
+  await w.close();
+  equipoExiste = true;
+}
+
+function renderTeam() {
+  const list = $("teamList");
+  if (!equipo.length) {
+    list.innerHTML = '<p class="team-empty">Aún no hay nadie en la lista. Agrega a las personas del equipo abajo.</p>';
+    return;
+  }
+  list.innerHTML = equipo.map((n, i) => `
+    <div class="team-row"><span>👤 ${escapeHtml(n)}</span>
+      <button class="rm" title="Quitar de la lista" data-idx="${i}" type="button">✕</button>
+    </div>`).join("");
+  list.querySelectorAll(".rm").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const nombre = equipo[Number(btn.dataset.idx)];
+      const enUso = tasks.filter(t => t.data.responsable === nombre && !t.data.completada).length;
+      const msg = enUso
+        ? nombre + " tiene " + enUso + " tarea(s) pendiente(s) asignada(s); seguirán mostrando su nombre. ¿Quitarle de la lista?"
+        : "¿Quitar a " + nombre + " de la lista?";
+      if (!confirm(msg)) return;
+      equipo.splice(Number(btn.dataset.idx), 1);
+      await saveEquipo();
+      renderTeam();
+      render();
+    });
+  });
+}
+
+async function addTeamMember() {
+  const nombre = $("teamNew").value.trim();
+  if (!nombre) return;
+  if (equipo.some(n => norm(n) === norm(nombre))) { alert(nombre + " ya está en la lista."); return; }
+  equipo.push(nombre);
+  equipo.sort((a, b) => a.localeCompare(b));
+  await saveEquipo();
+  $("teamNew").value = "";
+  $("teamNew").focus();
+  renderTeam();
+  render();
+}
+
+function openTeamModal() {
+  renderTeam();
+  $("teamBg").classList.add("open");
+  $("teamNew").focus();
+}
+
+function closeTeamModal() {
+  $("teamBg").classList.remove("open");
+  // refrescar el selector del formulario si está abierto, conservando lo elegido
+  if ($("modalBg").classList.contains("open")) fillRespSelect($("fResp").value);
+}
+
+function fillRespSelect(actual) {
+  const sel = $("fResp");
+  const nombres = [...equipo];
+  if (actual && !nombres.includes(actual)) nombres.push(actual); // respeta un nombre viejo ya asignado
+  sel.innerHTML = '<option value="">— Sin asignar —</option>' +
+    nombres.map(n => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join("");
+  sel.value = actual || "";
+}
+
 /* ---------- Filtros ---------- */
 function norm(s) {
   return String(s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 }
 
-function responsables() {
+function responsablesEnTareas() {
   const set = new Set();
   tasks.forEach(t => { if (t.data.responsable) set.add(t.data.responsable); });
   return [...set].sort((a, b) => a.localeCompare(b));
@@ -509,9 +628,9 @@ function pasaFiltro(t) {
 }
 
 function updateFilterUI() {
-  // Opciones del select de responsable (conservando la selección actual)
+  // Opciones del select de responsable: lista de equipo + nombres ya usados en tareas
   const sel = $("fltResp");
-  const nombres = responsables();
+  const nombres = [...new Set([...equipo, ...responsablesEnTareas()])].sort((a, b) => a.localeCompare(b));
   if (filtro.resp && filtro.resp !== "__sin__" && !nombres.includes(filtro.resp)) nombres.push(filtro.resp);
   sel.innerHTML = '<option value="">👤 Todos</option>' +
     nombres.map(n => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join("") +
@@ -519,8 +638,6 @@ function updateFilterUI() {
   sel.value = filtro.resp;
   $("fltStar").classList.toggle("active", filtro.star);
   $("fltClear").hidden = !(filtro.resp || filtro.star || filtro.texto);
-  // Autocompletado del campo Responsable del formulario
-  $("respList").innerHTML = nombres.map(n => `<option value="${escapeHtml(n)}">`).join("");
 }
 
 function orden(a, b) {
@@ -645,7 +762,7 @@ function openModal(t) {
   const d = t ? t.data : {};
   $("fNombre").value = d.nombre || "";
   $("fPaso").value = d.proximoPaso || "";
-  $("fResp").value = d.responsable || "";
+  fillRespSelect(d.responsable || "");
   $("fTiempo").value = d.tiempoEstimado || "";
   $("fFecha").value = d.fechaLimite || "";
   $("fPrioridad").checked = !!d.prioridad;
@@ -689,7 +806,7 @@ async function saveFromModal() {
   const data = existing ? existing.data : { creada: new Date().toISOString() };
   data.nombre = nombre;
   data.proximoPaso = $("fPaso").value.trim();
-  data.responsable = $("fResp").value.trim();
+  data.responsable = $("fResp").value;
   data.tiempoEstimado = $("fTiempo").value.trim();
   data.fechaLimite = $("fFecha").value || "";
   data.prioridad = $("fPrioridad").checked;
@@ -734,8 +851,18 @@ $("fltClear").onclick = () => {
   render();
 };
 $("fltBuscar").value = filtro.texto || "";
+$("btnTeam").onclick = openTeamModal;
+$("btnTeamHdr").onclick = openTeamModal;
+$("btnTeamAdd").onclick = addTeamMember;
+$("btnTeamClose").onclick = closeTeamModal;
+$("teamNew").addEventListener("keydown", ev => { if (ev.key === "Enter") addTeamMember(); });
+$("teamBg").addEventListener("click", ev => { if (ev.target === $("teamBg")) closeTeamModal(); });
 $("modalBg").addEventListener("click", ev => { if (ev.target === $("modalBg")) closeModal(); });
-document.addEventListener("keydown", ev => { if (ev.key === "Escape") closeModal(); });
+document.addEventListener("keydown", ev => {
+  if (ev.key !== "Escape") return;
+  if ($("teamBg").classList.contains("open")) closeTeamModal();
+  else closeModal();
+});
 
 tryRestore();
 </script>

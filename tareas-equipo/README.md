@@ -22,6 +22,9 @@ como un archivo `.json` independiente.
 ## Funciones
 
 - **Nombre, próximo paso, responsable y tiempo estimado** por tarea.
+- **Lista de equipo editable y compartida** (botón 👥 Equipo): los responsables
+  se eligen siempre de esa lista; se guarda como `equipo.json` en la carpeta,
+  así todos ven los mismos nombres.
 - **Barra de filtros**: por responsable (👤), solo prioritarias (⭐) y buscador
   de texto (busca en nombre, próximo paso, responsable y subtareas). Los
   filtros se recuerdan entre sesiones en cada computadora.
