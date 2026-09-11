@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Tareas del Equipo</title>
+<title>Tareas · Comercial · Vistazo Pharma Group</title>
 <style>
   :root {
     --bg: #f4f5f7;
@@ -11,8 +11,10 @@
     --ink: #1f2430;
     --muted: #6b7280;
     --line: #e5e7eb;
-    --accent: #2563eb;
-    --accent-soft: #eff6ff;
+    --accent: #1d4f91;
+    --accent-soft: #eaf2fb;
+    --brand-dark: #1d4f91;
+    --brand-light: #56b7e6;
     --green: #16a34a;
     --green-bg: #dcfce7;
     --yellow: #b45309;
@@ -41,8 +43,13 @@
     flex-wrap: wrap; gap: 12px;
     padding-block: 20px 4px;
   }
-  header h1 { font-size: 22px; margin: 0; display: flex; align-items: center; gap: 10px; }
-  header h1 .logo { font-size: 24px; }
+  header h1 { font-size: 22px; margin: 0; display: flex; align-items: center; gap: 12px; }
+  #logoSvg, #logoImg { height: 44px; width: auto; display: block; }
+  .brand { display: flex; flex-direction: column; line-height: 1.2; }
+  .brand-title { font-size: 17px; font-weight: 700; color: var(--brand-dark); }
+  .brand-sub { font-size: 12.5px; font-weight: 800; letter-spacing: .1em; }
+  .brand-sub .vz { color: var(--brand-dark); }
+  .brand-sub .pg { color: var(--brand-light); font-weight: 600; }
   .header-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 
   .btn {
@@ -53,7 +60,7 @@
   }
   .btn:hover { background: #f9fafb; }
   .btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
-  .btn-primary:hover { background: #1d4ed8; }
+  .btn-primary:hover { background: #163d72; }
   .btn-danger { color: var(--red); }
   .btn-small { padding: 4px 10px; font-size: 13px; box-shadow: none; }
 
@@ -211,7 +218,26 @@
 <div class="wrap">
 
   <header>
-    <h1><span class="logo">📋</span> Tareas del Equipo</h1>
+    <h1>
+      <svg id="logoSvg" viewBox="-29.5 -1.5 59 59" xmlns="http://www.w3.org/2000/svg" aria-label="Vistazo Pharma Group">
+        <g stroke="#fff" stroke-width="2" stroke-linejoin="round">
+          <polygon fill="#56b7e6" points="0,0 13.86,8 0,16 -13.86,8"/>
+          <polygon fill="#1d4f91" points="-13.86,8 0,16 0,32 -13.86,24"/>
+          <polygon fill="#1d4f91" points="13.86,8 0,16 0,32 13.86,24"/>
+          <polygon fill="#56b7e6" points="-13.86,24 0,32 -13.86,40 -27.7,32"/>
+          <polygon fill="#1d4f91" points="-27.7,32 -13.86,40 -13.86,56 -27.7,48"/>
+          <polygon fill="#1d4f91" points="0,32 -13.86,40 -13.86,56 0,48"/>
+          <polygon fill="#56b7e6" points="13.86,24 27.7,32 13.86,40 0,32"/>
+          <polygon fill="#1d4f91" points="0,32 13.86,40 13.86,56 0,48"/>
+          <polygon fill="#1d4f91" points="27.7,32 13.86,40 13.86,56 27.7,48"/>
+        </g>
+      </svg>
+      <img id="logoImg" alt="Vistazo Pharma Group" hidden>
+      <span class="brand">
+        <span class="brand-title">Tareas · Departamento Comercial</span>
+        <span class="brand-sub"><span class="vz">VISTAZO</span> <span class="pg">PHARMA GROUP</span></span>
+      </span>
+    </h1>
     <div class="header-actions" id="headerActions" hidden>
       <span class="status-bar" id="statusBar"><span class="dot" id="syncDot"></span><span id="statusText"></span></span>
       <button class="btn" id="btnTeamHdr" title="Editar la lista de responsables">👥 Equipo</button>
@@ -414,6 +440,7 @@ async function tryRestore() {
 
 async function connect() {
   tasksHandle = await rootHandle.getDirectoryHandle(SUBFOLDER, { create: true });
+  loadLogo();
   $("welcome").hidden = true;
   $("app").hidden = false;
   $("headerActions").hidden = false;
@@ -424,6 +451,21 @@ async function connect() {
     // no refrescar mientras se edita para no perder lo escrito
     if (!$("modalBg").classList.contains("open")) loadAll(true);
   }, AUTO_REFRESH_MS);
+}
+
+/* ---------- Logo corporativo ----------
+   Si en la carpeta hay un archivo logo.png (o .jpg/.svg/.webp),
+   se usa en el encabezado en lugar del isotipo dibujado. */
+async function loadLogo() {
+  for (const name of ["logo.png", "logo.jpg", "logo.jpeg", "logo.svg", "logo.webp"]) {
+    try {
+      const fh = await rootHandle.getFileHandle(name);
+      $("logoImg").src = URL.createObjectURL(await fh.getFile());
+      $("logoImg").hidden = false;
+      $("logoSvg").style.display = "none";
+      return;
+    } catch (e) { /* ese nombre no existe: probar el siguiente */ }
+  }
 }
 
 /* ---------- Lectura de tareas ---------- */
