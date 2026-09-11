@@ -132,16 +132,14 @@
   .date-pill.sem-rojo    { background: var(--red); }
   .date-pill.sem-vencida { background: var(--overdue); }
 
-  .chip-sub {
-    font-size: 11.5px; padding: 2px 9px; border-radius: 999px; cursor: pointer; user-select: none;
-    background: var(--accent-soft); color: var(--accent); white-space: nowrap; font-weight: 600;
+  .chip-sub, .chip-com {
+    display: inline-flex; align-items: center; gap: 3px;
+    height: 19px; padding: 0 8px; border-radius: 999px; overflow: hidden;
+    font-size: 11px; line-height: 1; font-weight: 600;
+    cursor: pointer; user-select: none; white-space: nowrap;
+    background: var(--accent-soft); color: var(--accent);
   }
-  .chip-sub:hover { background: #d5e5f5; }
-  .chip-com {
-    font-size: 11.5px; padding: 2px 9px; border-radius: 999px; cursor: pointer; user-select: none;
-    background: var(--accent-soft); color: var(--accent); white-space: nowrap; font-weight: 600;
-  }
-  .chip-com:hover { background: #d5e5f5; }
+  .chip-sub:hover, .chip-com:hover { background: #d5e5f5; }
   .chip-com.empty { background: #f3f4f6; color: var(--muted); }
 
   /* Comentarios */
@@ -154,7 +152,7 @@
   .com-head .rm-com { margin-left: auto; background: none; border: none; color: #9ca3af; cursor: pointer; font-size: 14px; padding: 0 4px; }
   .com-head .rm-com:hover { color: var(--red); }
   .com-text { margin-top: 2px; overflow-wrap: anywhere; }
-  .com-add { display: flex; gap: 8px; margin-top: 8px; }
+  .com-add { display: flex; gap: 8px; margin-bottom: 6px; }
   .com-add input { flex: 1; padding: 7px 10px; border: 1px solid var(--line); border-radius: 8px; font-family: inherit; font-size: 13.5px; }
   .com-add input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
 
@@ -914,7 +912,13 @@ function taskCard(t) {
         </div>`).join("")}
     </div>` : ""}
     <div class="comments ${abiertoCom ? "open" : ""}">
-      ${coms.map((c, i) => `
+      <div class="com-add">
+        <input type="text" placeholder="Escribe un comentario sobre el avance…">
+        <button class="btn btn-small" data-act="add-com" type="button">Agregar</button>
+      </div>
+      ${coms.map((c, i) => [c, i])
+        .sort((a, b) => String(b[0].cuando || "").localeCompare(String(a[0].cuando || "")))
+        .map(([c, i]) => `
         <div class="com-row">
           <div class="com-head">
             <b>${escapeHtml(c.quien || "?")}</b> · ${fmtFechaHora(c.cuando)}
@@ -922,10 +926,6 @@ function taskCard(t) {
           </div>
           <div class="com-text">${escapeHtml(c.texto)}</div>
         </div>`).join("")}
-      <div class="com-add">
-        <input type="text" placeholder="Escribe un comentario sobre el avance…">
-        <button class="btn btn-small" data-act="add-com" type="button">Agregar</button>
-      </div>
     </div>
   </div>`;
 }
