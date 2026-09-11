@@ -133,12 +133,14 @@
   .date-pill.sem-vencida { background: var(--overdue); }
 
   .chip-sub, .chip-com {
-    display: inline-flex; align-items: center; gap: 3px;
-    height: 19px; padding: 0 8px; border-radius: 999px; overflow: hidden;
-    font-size: 11px; line-height: 1; font-weight: 600;
+    display: inline-flex; align-items: center; gap: 4px;
+    height: 18px; max-height: 18px; padding: 0 7px; border-radius: 999px; overflow: hidden;
+    font-size: 11px; line-height: 18px; font-weight: 600;
     cursor: pointer; user-select: none; white-space: nowrap;
     background: var(--accent-soft); color: var(--accent);
+    vertical-align: middle; align-self: center;
   }
+  .chip-com svg { width: 11px; height: 11px; flex: none; display: block; }
   .chip-sub:hover, .chip-com:hover { background: #d5e5f5; }
   .chip-com.empty { background: #f3f4f6; color: var(--muted); }
 
@@ -893,7 +895,7 @@ function taskCard(t) {
           <button class="star-btn ${d.prioridad ? "on" : ""}" title="Prioridad" data-act="star">★</button>
           <span class="task-name">${escapeHtml(d.nombre)}</span>
           ${subs.length ? `<span class="chip-sub" data-act="toggle-subs">${abierto ? "▾" : "▸"} ${hechas}/${subs.length}</span>` : ""}
-          <span class="chip-com ${coms.length ? "" : "empty"}" data-act="toggle-com" title="Comentarios de la tarea">💬${coms.length ? " " + coms.length : ""}</span>
+          <span class="chip-com ${coms.length ? "" : "empty"}" data-act="toggle-com" title="Comentarios de la tarea"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 3h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H9l-5 4V5a2 2 0 0 1 2-2z"/></svg>${coms.length ? coms.length : ""}</span>
         </div>
         ${d.proximoPaso ? `<div class="task-next">Próximo paso: <b>${escapeHtml(d.proximoPaso)}</b></div>` : ""}
       </div>
