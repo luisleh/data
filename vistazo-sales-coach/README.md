@@ -4,19 +4,25 @@
 
 MVP de un coach comercial con IA para vendedores de Vistazo Pharma Group: chat de texto, conversación por voz natural, modos de coaching (preparación de visitas, objeciones, role-play, consulta de producto), RAG sobre una biblioteca de documentos aprobados y panel de administración.
 
-- Stack: **Next.js 15 (App Router) + TypeScript · Supabase (Auth, Postgres + pgvector, Storage) · OpenAI (chat, embeddings, Realtime/voz) · Vercel**
+- Stack: **Next.js 15 (App Router) + TypeScript · Supabase (Auth, Postgres + pgvector, Storage) · OpenAI (chat, embeddings, Realtime/voz)**
 - Arquitectura y decisiones: ver [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
+
+> **Flujo actual: desarrollo y ejecución local** (`npm run dev`). La arquitectura queda lista para Vercel, pero el deployment es un paso futuro (sección 6). Lo único externo que la app necesita siempre es la API de OpenAI; Supabase puede ser un proyecto cloud (free) o el stack local de la CLI de Supabase.
 
 ---
 
 ## 1. Requisitos
 
 - Node.js 20+ (probado con 22)
-- Una cuenta de [Supabase](https://supabase.com) (plan free alcanza)
 - Una API key de [OpenAI](https://platform.openai.com) con acceso a chat, embeddings y Realtime
-- (Para deploy) una cuenta de [Vercel](https://vercel.com)
+- Supabase, en cualquiera de sus dos variantes:
+  - **Opción A (recomendada para empezar)**: un proyecto cloud gratuito en [supabase.com](https://supabase.com)
+  - **Opción B (todo local)**: la [CLI de Supabase](https://supabase.com/docs/guides/local-development) + Docker
+- (Solo para el deploy futuro) una cuenta de [Vercel](https://vercel.com)
 
 ## 2. Configurar Supabase
+
+### Opción A: proyecto cloud (free tier)
 
 1. Creá un proyecto nuevo en Supabase.
 2. En **Database → Extensions**, habilitá la extensión `vector` (pgvector).
@@ -26,6 +32,19 @@ MVP de un coach comercial con IA para vendedores de Vistazo Pharma Group: chat d
 4. En **Authentication → Providers → Email**: dejá habilitado Email/Password.
    - Para desarrollo, podés desactivar "Confirm email" y así entrar sin verificación.
 5. Copiá de **Settings → API**: la URL del proyecto, la `anon key` y la `service_role key`.
+
+### Opción B: Supabase local (CLI + Docker)
+
+Para desarrollar sin ningún servicio cloud salvo OpenAI:
+
+```bash
+cd vistazo-sales-coach
+supabase init            # crea supabase/config.toml (la carpeta migrations ya existe)
+supabase start           # levanta Postgres, Auth, Storage y Studio en Docker
+supabase db reset        # aplica supabase/migrations/ sobre la base local
+```
+
+`supabase start` imprime la `API URL`, la `anon key` y la `service_role key` locales: usá esas en `.env.local`. Studio queda en `http://127.0.0.1:54323` (ahí tenés el SQL editor para, por ejemplo, promover el admin). La extensión `vector` ya viene incluida en la imagen local.
 
 ### Crear el primer administrador
 
@@ -81,7 +100,9 @@ npm run build     # build de producción
 
 Los tests del guardrail (`tests/guardrail.test.ts`) cubren la clasificación con el LLM mockeado: el guardrail es una capa explícita e inyectable, no depende de un único system prompt.
 
-## 6. Deploy en Vercel
+## 6. Deploy en Vercel (paso futuro — no requerido ahora)
+
+Nada del código depende de Vercel: no hay APIs propietarias de la plataforma, solo rutas estándar de Next.js. Cuando llegue el momento:
 
 1. Importá el repositorio en Vercel.
 2. **Root Directory**: `vistazo-sales-coach` (el proyecto vive en un subdirectorio del repo).
