@@ -7,7 +7,6 @@ Inicio de hoy: 2026-11-17 09:28 (hora Argentina). Briefing ya entregado: sí
 Formato: `- [ ] tarea (añadido AAAA-MM-DD; vence AAAA-MM-DD opcional)`
 - [ ] Definir con Luis las rutinas diarias y periódicas (añadido 2026-11-17)
 - [ ] Registrar preferencias de trabajo de Luis (añadido 2026-11-17)
-- [ ] Correo Vistazo (Roundcube/cPanel): buscar forma de acceso; descartado: contraseña, reenvío a Gmail, Remote Control (añadido 2026-11-17)
 
 ## En espera de terceros
 (ninguno)
