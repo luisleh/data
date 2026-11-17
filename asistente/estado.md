@@ -1,5 +1,8 @@
 # Estado actual (actualizado: 2026-11-17)
 
+## Jornada
+Inicio de hoy: 2026-11-17 09:28 (hora Argentina). Briefing ya entregado: sí
+
 ## Pendientes abiertos
 - Definir rutinas diarias y periódicas con Luis.
 - Registrar preferencias de trabajo de Luis.
