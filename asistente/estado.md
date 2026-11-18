@@ -9,4 +9,4 @@ Formato: `- [ ] tarea (añadido AAAA-MM-DD; vence AAAA-MM-DD opcional)`
 - [ ] Registrar preferencias de trabajo de Luis (añadido 2026-11-17)
 
 ## En espera de terceros
-(ninguno)
+- Tanja (GE): respuesta a mi revisión de la versión II del folleto de medio de contraste (separador decimal, marcas DRAFT/JB, redondeos pág. 2-3). Enviado 2026-11-17.
