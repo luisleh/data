@@ -9,6 +9,7 @@ Regla: desde el día de inicio, en cada primer saludo del día preguntar si ya s
 | Actividad | Inicia | Ciclo actual | Estado |
 |---|---|---|---|
 | Enviar a GE: stock de inicio de mes + ventas del mes anterior | día 1 de cada mes | 2026-11 | HECHO (confirmado por Luis 2026-11-17) |
+| Enviar mailing mensual desde Odoo (precios y novedades) | primeros días de cada mes (desde día 1) | 2026-12 | PENDIENTE (se activa 2026-12-01) |
 
 Próximo ciclo: 2026-12-01 (se activa automáticamente; si el 1 es fin de semana, igual recordar).
 
