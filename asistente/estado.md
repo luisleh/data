@@ -1,7 +1,7 @@
-# Estado actual (actualizado: 2026-11-17)
+# Estado actual (actualizado: 2026-11-18)
 
 ## Jornada
-Inicio de hoy: 2026-11-17 09:28 (hora Argentina). Briefing ya entregado: sí
+Inicio de hoy: 2026-11-18 11:48 (hora Argentina). Briefing ya entregado: sí
 
 ## Pendientes abiertos
 Formato: `- [ ] tarea (añadido AAAA-MM-DD; vence AAAA-MM-DD opcional)`
