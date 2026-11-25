@@ -25,5 +25,5 @@ Formato: `- [ ] tarea (añadido AAAA-MM-DD; vence AAAA-MM-DD opcional)`
 - Tanja (GE), folleto medio de contraste v.II: ella ya corrigió decimales (2026-11-18). Falta: Zane revisa redondeo (100,0); Lisandra evalúa aprobación para todo LATAM; al llegar el JB LATAM se quitan marcas DRAFT/JB y se genera versión imprimible/digital.
 
 ## Mail mensual Kairos (2026-11-25)
-- Plantilla Odoo `mail.template` id 40 creada; prueba a Luis enviada y recibida OK. Destinatarios: griselda.groppa@ y luis.lehmann@vistazogroup.com.
-- Falta la automatización mensual (día 1, 9:07 Córdoba): crear código en Odoo por API fue DENEGADO (permiso). Opciones: Luis crea la acción planificada en Odoo (Ajustes > Técnico) o activar tarea programada con Gmail desde claude.ai. Tarea `trig_0124Lgq3GQJEXVSrh1PtSLtz` desactivada (sin Gmail).
+- Plantilla Odoo id 40 OK (prueba recibida por Luis). Tarea programada `trig_0124Lgq3GQJEXVSrh1PtSLtz` ACTIVA: día 1, 9:07 Córdoba, envía la plantilla por la API de Odoo (sin código en Odoo ni Gmail). Autorizado por Luis sin confirmación cada vez.
+- Primer envío real: 2026-12-01. Verificar ese día que salió (sin probar antes para no mandar mail a Griselda); si falló, enviarlo con Luis. Seguimiento de la actividad Kairos: persistente en rutinas.md.
