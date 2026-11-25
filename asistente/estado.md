@@ -1,4 +1,4 @@
-# Estado actual (actualizado: 2026-11-24)
+# Estado actual (actualizado: 2026-11-25)
 
 ## Jornada
 Inicio de hoy: 2026-11-24 11:35 (hora Argentina). Briefing ya entregado: sí
@@ -27,3 +27,7 @@ Formato: `- [ ] tarea (añadido AAAA-MM-DD; vence AAAA-MM-DD opcional)`
 ## Mail mensual Kairos (2026-11-25)
 - Plantilla Odoo id 40 OK (prueba recibida por Luis). Tarea programada `trig_0124Lgq3GQJEXVSrh1PtSLtz` ACTIVA: día 1, 9:07 Córdoba, envía la plantilla por la API de Odoo (sin código en Odoo ni Gmail). Autorizado por Luis sin confirmación cada vez.
 - Primer envío real: 2026-12-01. Verificar ese día que salió (sin probar antes para no mandar mail a Griselda); si falló, enviarlo con Luis. Seguimiento de la actividad Kairos: persistente en rutinas.md.
+
+## Notas operativas (2026-11-25)
+- Actividades Odoo de Luis: `mail.activity` (search_read por `date_deadline`, filtrar user_id Luis Lehmann = res.users id 2). Solo lectura salvo OK de Luis. Vencidas al 25/11: llamada Pablo Quintana (DM Diagnóstico Médico), hablar con Sturla (GENEA).
+- Envíos desde Odoo: `mail.template/send_mail` (ids, res_id, force_send). Crear código en Odoo por API fue denegado y podría tener costo (Studio): no hacerlo.
