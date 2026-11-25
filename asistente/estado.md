@@ -25,4 +25,5 @@ Formato: `- [ ] tarea (añadido AAAA-MM-DD; vence AAAA-MM-DD opcional)`
 - Tanja (GE), folleto medio de contraste v.II: ella ya corrigió decimales (2026-11-18). Falta: Zane revisa redondeo (100,0); Lisandra evalúa aprobación para todo LATAM; al llegar el JB LATAM se quitan marcas DRAFT/JB y se genera versión imprimible/digital.
 
 ## Mail mensual Kairos (2026-11-25)
-- Tarea programada `trig_0124Lgq3GQJEXVSrh1PtSLtz` creada pero DESACTIVADA: no puede usar Gmail (sin conectores). Activarla solo si Luis la recrea desde claude.ai (Routines) con Gmail. Destinatarios: griselda.groppa@ y luis.lehmann@vistazogroup.com, día 1, 9:07 Córdoba.
+- Plantilla Odoo `mail.template` id 40 creada; prueba a Luis enviada y recibida OK. Destinatarios: griselda.groppa@ y luis.lehmann@vistazogroup.com.
+- Falta la automatización mensual (día 1, 9:07 Córdoba): crear código en Odoo por API fue DENEGADO (permiso). Opciones: Luis crea la acción planificada en Odoo (Ajustes > Técnico) o activar tarea programada con Gmail desde claude.ai. Tarea `trig_0124Lgq3GQJEXVSrh1PtSLtz` desactivada (sin Gmail).
