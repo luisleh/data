@@ -11,6 +11,8 @@ Formato: `- [ ] tarea (añadido AAAA-MM-DD; vence AAAA-MM-DD opcional)`
 - [ ] Reunión de ventas (método en `archivo/analisis-ventas-2026.md`): faltan clientes activos/dormidos, precio por producto, página resumen. Pedir a Luis Excel actualizado y producto/canal del ajuste de nov (2.685 u.) (añadido 2026-11-18)
 - [ ] Luis completa el Excel de clientes para precio especial (objetivo Bayer, prioridad, precio) y lo devuelve para ordenarlo (añadido 2026-11-19)
 - [ ] Omnipaque 350: stock crítico (~3 semanas al 18/11) -> decidir pedido de importación (añadido 2026-11-18)
+- [ ] Ver la lista de Bassani (añadido 2026-11-25)
+- [ ] URGENTE: arreglar el envío de Ocasa a San Vicente (añadido 2026-11-25; vence 2026-11-26)
 
 - [ ] Cadencia de recompra para vendedores (añadido 2026-11-21): ver sección abajo; falta que Luis confirme si llegó el mail de prueba y autorice el envío semanal (añadido 2026-11-21)
 
