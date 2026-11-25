@@ -10,6 +10,7 @@ Regla: desde el día de inicio, en cada primer saludo del día preguntar si ya s
 |---|---|---|---|
 | Enviar a GE: stock de inicio de mes + ventas del mes anterior | día 1 de cada mes | 2026-11 | HECHO (confirmado por Luis 2026-11-17) |
 | Enviar mailing mensual desde Odoo (precios y novedades) | primeros días de cada mes (desde día 1) | 2026-12 | PENDIENTE (se activa 2026-12-01) |
+| Actualizar precios de contrastes en Kairos (ventana días 1 a 5) | día 1 de cada mes (mail automático a Griselda Groppa y Luis Lehmann, ambos @vistazogroup.com) | 2026-12 | PENDIENTE (se activa 2026-12-01; mail automático NO programado aún: la tarea programada no tiene Gmail, ver estado.md; mientras tanto el día 1 el asistente propone enviar el mail con confirmación de Luis; seguimiento: preguntar cada día hasta confirmar; si el día 5 sigue sin hacerse, avisar como vencido) |
 
 Próximo ciclo: 2026-12-01 (se activa automáticamente; si el 1 es fin de semana, igual recordar).
 
