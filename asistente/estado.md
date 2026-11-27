@@ -13,6 +13,7 @@ Formato: `- [ ] tarea (añadido AAAA-MM-DD; vence AAAA-MM-DD opcional)`
 - [ ] Omnipaque 350: stock crítico (~3 semanas al 18/11) -> decidir pedido de importación (añadido 2026-11-18)
 - [ ] Ver la lista de Bassani (añadido 2026-11-25)
 - [ ] URGENTE: arreglar el envío de Ocasa a San Vicente (añadido 2026-11-25; vence 2026-11-26)
+- [ ] Consulta IECS N° 1102 (iodixanol): 1) mail a Daniel Costa (dir. general) y Mauricio Arambillet (dir. negocios Cono Sur, nexo con GE); 2) pedido de transparencia al IECS; 3) enviar evidencia vía formulario (añadido 2026-11-27; vence 2026-12-06). Informe parcial en archivo/iecs-1102-investigacion.md (sin verificar, sin commit)
 
 - [ ] Cadencia de recompra para vendedores (añadido 2026-11-21): ver sección abajo; falta que Luis confirme si llegó el mail de prueba y autorice el envío semanal (añadido 2026-11-21)
 
