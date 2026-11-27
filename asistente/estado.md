@@ -13,7 +13,7 @@ Formato: `- [ ] tarea (añadido AAAA-MM-DD; vence AAAA-MM-DD opcional)`
 - [ ] Omnipaque 350: stock crítico (~3 semanas al 18/11) -> decidir pedido de importación (añadido 2026-11-18)
 - [ ] Ver la lista de Bassani (añadido 2026-11-25)
 - [ ] URGENTE: arreglar el envío de Ocasa a San Vicente (añadido 2026-11-25; vence 2026-11-26)
-- [ ] Consulta IECS N° 1102 (iodixanol) (añadido 2026-11-27; vence 2026-12-06): ver sección abajo. Faltan: 1) mail a Daniel Costa (dir. general) y Mauricio Arambillet (dir. negocios Cono Sur, nexo con GE); Luis debe pasar sus emails -> borrador en Gmail, NO enviar; 2) pedido neutral de transparencia al IECS; 3) enviar evidencia por formulario
+- [ ] Consulta IECS N° 1102 (iodixanol) (añadido 2026-11-27; vence 2026-12-06): ver sección abajo. DECISIÓN de Daniel Costa (27/11): pasar el tema a GE y que GE defina los pasos; Vistazo NO responde ni contacta al IECS hasta tener instrucciones. Falta: enviar mail formal en inglés a Othon y Tiago (GE), cc Mauricio Arambillet y Daniel Costa (borrador en Gmail solo con emails de Luis; NO enviar)
 
 - [ ] Cadencia de recompra para vendedores (añadido 2026-11-21): ver sección abajo; falta que Luis confirme si llegó el mail de prueba y autorice el envío semanal (añadido 2026-11-21)
 
