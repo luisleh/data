@@ -1,7 +1,7 @@
-# Estado actual (actualizado: 2026-11-25)
+# Estado actual (actualizado: 2026-11-27)
 
 ## Jornada
-Inicio de hoy: 2026-11-25 10:23 (hora Argentina). Briefing ya entregado: sí
+Inicio de hoy: 2026-11-27 05:51 (hora Argentina). Briefing ya entregado: sí
 Luis en Uruguay (HQ Vistazo) 19 y 20/11 presentando análisis de ventas; prepara con el asistente antes de empezar.
 
 ## Pendientes abiertos
